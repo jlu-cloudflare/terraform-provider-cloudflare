@@ -1268,8 +1268,10 @@ func MigrationTestStepWithPlan(t *testing.T, v4Config string, tmpDir string, exa
 	return []resource.TestStep{migrationStep, planStep, validationStep}
 }
 
-// MigrationV2TestStepWithPlan creates multiple test steps for v2 migration with plan processing
-// This is similar to MigrationTestStepWithPlan but uses the v2 migration command with explicit version parameters
+// MigrationV2TestStepWithPlan creates multiple test steps for v2 migration with plan processing.
+// Runs the v2 migration command (tf-migrate) with explicit source/target version parameters,
+// then a PlanOnly step to process import blocks and state corrections, then a validation step
+// asserting an empty plan (modulo falsey-to-null transitions).
 func MigrationV2TestStepWithPlan(t *testing.T, v4Config string, tmpDir string, exactVersion string, sourceVersion string, targetVersion string, stateChecks []statecheck.StateCheck) []resource.TestStep {
 	// First step: run migration
 	migrationStep := MigrationV2TestStep(t, v4Config, tmpDir, exactVersion, sourceVersion, targetVersion, nil) // No state checks yet
