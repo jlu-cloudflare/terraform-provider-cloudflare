@@ -16,7 +16,7 @@ var _ resource.ResourceWithConfigValidators = (*DLSPrefixBindingResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-<<<<<<< HEAD
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"DLS: Read",
@@ -24,9 +24,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				"IP Prefixes: Write",
 			},
 		}.String(),
-=======
-		Version: 500,
->>>>>>> a412d9fa9 (Apply custom code)
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "The ID of the binding.",

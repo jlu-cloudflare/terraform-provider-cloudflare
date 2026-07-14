@@ -146,7 +146,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"status": schema.StringAttribute{
-<<<<<<< HEAD
 				Description: "Current sync state of the server\nAvailable values: \"waiting\", \"ready\", \"stale\", \"error\".",
 				Computed:    true,
 				Validators: []validator.String{
@@ -158,10 +157,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					),
 				},
 				Default: stringdefault.StaticString("waiting"),
-=======
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
->>>>>>> a412d9fa9 (Apply custom code)
 			},
 			"prompts": schema.ListAttribute{
 				Computed:   true,
