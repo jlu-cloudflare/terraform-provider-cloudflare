@@ -99,7 +99,6 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/leaked_credential_check_rule"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/list"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/list_item"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/load_balancer"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/load_balancer_monitor"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/load_balancer_monitor_group"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/load_balancer_pool"
@@ -473,7 +472,6 @@ func (p *CloudflareProvider) Resources(ctx context.Context) []func() resource.Re
 		zone_setting.NewResource,
 		zone_hold.NewResource,
 		zone_subscription.NewResource,
-		load_balancer.NewResource,
 		load_balancer_monitor.NewResource,
 		load_balancer_monitor_group.NewResource,
 		load_balancer_pool.NewResource,
@@ -748,8 +746,6 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		zone_setting.NewZoneSettingDataSource,
 		zone_hold.NewZoneHoldDataSource,
 		zone_subscription.NewZoneSubscriptionDataSource,
-		load_balancer.NewLoadBalancerDataSource,
-		load_balancer.NewLoadBalancersDataSource,
 		load_balancer_monitor.NewLoadBalancerMonitorDataSource,
 		load_balancer_monitor.NewLoadBalancerMonitorsDataSource,
 		load_balancer_monitor_group.NewLoadBalancerMonitorGroupDataSource,

@@ -112,7 +112,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								Optional:    true,
 								Validators: []validator.List{
 									listvalidator.ValueStringsAre(
-										stringvalidator.OneOfCaseInsensitive("text"),
+										stringvalidator.OneOfCaseInsensitive("text", "file"),
 									),
 								},
 								ElementType: types.StringType,
@@ -122,7 +122,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								Optional:    true,
 								Validators: []validator.List{
 									listvalidator.ValueStringsAre(
-										stringvalidator.OneOfCaseInsensitive("text"),
+										stringvalidator.OneOfCaseInsensitive("text", "file"),
 									),
 								},
 								ElementType: types.StringType,

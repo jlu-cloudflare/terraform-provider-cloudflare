@@ -1,6 +1,14 @@
 resource "cloudflare_custom_hostname" "example_custom_hostname" {
   zone_id = "023e105f4ecef8ad9ca31a8372d0c353"
   hostname = "app.example.com"
+<<<<<<< HEAD
+  custom_metadata = {
+    foo = "string"
+  }
+  custom_origin_server = "origin2.example.com"
+  custom_origin_sni = "sni.example.com"
+=======
+>>>>>>> a412d9fa9 (Apply custom code)
   ssl = {
     bundle_method = "ubiquitous"
     certificate_authority = "google"

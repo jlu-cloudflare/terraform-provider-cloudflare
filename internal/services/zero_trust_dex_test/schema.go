@@ -7,6 +7,11 @@ import (
 
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
+<<<<<<< HEAD
+	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+=======
+>>>>>>> a412d9fa9 (Apply custom code)
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -109,6 +114,22 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 			},
+<<<<<<< HEAD
+			"created": schema.StringAttribute{
+				Description: "Date the test was created, in RFC 3339 format.",
+				Computed:    true,
+				CustomType:  timetypes.RFC3339Type{},
+			},
+			"targeted": schema.BoolAttribute{
+				Computed: true,
+			},
+			"updated": schema.StringAttribute{
+				Description: "Date the test was last updated, in RFC 3339 format.",
+				Computed:    true,
+				CustomType:  timetypes.RFC3339Type{},
+			},
+=======
+>>>>>>> a412d9fa9 (Apply custom code)
 		},
 	}
 }

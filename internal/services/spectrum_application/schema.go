@@ -134,11 +134,24 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.Dynamic{customfield.NormalizeDynamicPlanModifier()},
 			},
 			"argo_smart_routing": schema.BoolAttribute{
+<<<<<<< HEAD
+				Description: "Enables Argo Smart Routing for this application.\nNotes: Only available for TCP or UDP applications with traffic_type set to \"direct\".",
+				Computed:    true,
+				Optional:    true,
+				Default:     booldefault.StaticBool(false),
+			},
+			"ip_firewall": schema.BoolAttribute{
+				Description: "Enables IP Access Rules for this application.\nNotes: Only available for TCP applications.",
+				Computed:    true,
+				Optional:    true,
+				Default:     booldefault.StaticBool(false),
+=======
 				Computed:      true,
 				Default:       booldefault.StaticBool(false),
 				Description:   "Enables Argo Smart Routing for this application.\nNotes: Only available for TCP applications with traffic_type set to \"direct\".",
 				Optional:      true,
 				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
+>>>>>>> a412d9fa9 (Apply custom code)
 			},
 			"proxy_protocol": schema.StringAttribute{
 				Computed:    true,

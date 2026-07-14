@@ -3,12 +3,15 @@ module github.com/cloudflare/terraform-provider-cloudflare
 go 1.25.8
 
 require (
+<<<<<<< HEAD
+=======
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.13
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.13
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.98.0
 	github.com/cloudflare/cloudflare-go v0.116.0
 	github.com/cloudflare/cloudflare-go/v6 v6.10.0
+>>>>>>> a412d9fa9 (Apply custom code)
 	github.com/cloudflare/cloudflare-go/v7 v7.7.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/hashicorp/go-uuid v1.0.3
