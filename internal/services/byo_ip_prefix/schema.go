@@ -20,7 +20,6 @@ var _ resource.ResourceWithConfigValidators = (*ByoIPPrefixResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"IP Prefixes: BGP On Demand Read",

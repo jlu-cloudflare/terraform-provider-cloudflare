@@ -12,7 +12,6 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7/option"
 	"github.com/cloudflare/cloudflare-go/v7/r2"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/consts"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -65,15 +64,7 @@ func (r *R2BucketResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	var state *CreateR2BucketModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &state)...)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	dataBytes, err := state.MarshalJSON()
+	dataBytes, err := data.MarshalJSON()
 	if err != nil {
 		resp.Diagnostics.AddError("failed to serialize http request", err.Error())
 		return
@@ -85,7 +76,6 @@ func (r *R2BucketResource) Create(ctx context.Context, req resource.CreateReques
 		r2.BucketNewParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
-		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -123,16 +113,20 @@ func (r *R2BucketResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
+	dataBytes, err := data.MarshalJSONForUpdate(*state)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to serialize http request", err.Error())
+		return
+	}
 	res := new(http.Response)
 	env := R2BucketResultEnvelope{*data}
-	_, err := r.client.R2.Buckets.Edit(
+	_, err = r.client.R2.Buckets.Edit(
 		ctx,
 		data.Name.ValueString(),
 		r2.BucketEditParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
-		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
-		option.WithHeader(consts.R2StorageClassHTTPHeaderName, data.StorageClass.ValueString()),
+		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -169,7 +163,6 @@ func (r *R2BucketResource) Read(ctx context.Context, req resource.ReadRequest, r
 		r2.BucketGetParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
-		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -209,7 +202,6 @@ func (r *R2BucketResource) Delete(ctx context.Context, req resource.DeleteReques
 		r2.BucketDeleteParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
-		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
 	if err != nil {
@@ -226,13 +218,11 @@ func (r *R2BucketResource) ImportState(ctx context.Context, req resource.ImportS
 
 	path_account_id := ""
 	path_bucket_name := ""
-	jurisdiction := "default"
 	diags := importpath.ParseImportID(
 		req.ID,
-		"<account_id>/<bucket_name>/<jurisdiction>",
+		"<account_id>/<bucket_name>",
 		&path_account_id,
 		&path_bucket_name,
-		&jurisdiction,
 	)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -242,12 +232,6 @@ func (r *R2BucketResource) ImportState(ctx context.Context, req resource.ImportS
 	data.AccountID = types.StringValue(path_account_id)
 	data.Name = types.StringValue(path_bucket_name)
 
-	if jurisdiction == "default" {
-		data.Jurisdiction = types.StringValue("default")
-	} else {
-		data.Jurisdiction = types.StringValue(jurisdiction)
-	}
-
 	res := new(http.Response)
 	env := R2BucketResultEnvelope{*data}
 	_, err := r.client.R2.Buckets.Get(
@@ -256,7 +240,6 @@ func (r *R2BucketResource) ImportState(ctx context.Context, req resource.ImportS
 		r2.BucketGetParams{
 			AccountID: cloudflare.F(path_account_id),
 		},
-		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -276,6 +259,6 @@ func (r *R2BucketResource) ImportState(ctx context.Context, req resource.ImportS
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *R2BucketResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	modifyPlan(ctx, req, resp)
+func (r *R2BucketResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, _ *resource.ModifyPlanResponse) {
+
 }

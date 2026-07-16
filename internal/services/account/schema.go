@@ -22,7 +22,6 @@ var _ resource.ResourceWithConfigValidators = (*AccountResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Account Firewall Access Rules Read",
@@ -64,39 +63,27 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"unit": schema.SingleNestedAttribute{
 				Description: "information related to the tenant unit, and optionally, an id of the unit to create the account on. see https://developers.cloudflare.com/tenant/how-to/manage-accounts/",
-				Optional:    true,
 				Computed:    true,
+				Optional:    true,
 				CustomType:  customfield.NewNestedObjectType[AccountUnitModel](ctx),
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-					objectplanmodifier.RequiresReplaceIfConfigured(),
-				},
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
 						Description: "Tenant unit ID",
 						Computed:    true,
 						Optional:    true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-							stringplanmodifier.RequiresReplace(),
-						},
 					},
 				},
+				PlanModifiers: []planmodifier.Object{objectplanmodifier.RequiresReplaceIfConfigured()},
 			},
 			"name": schema.StringAttribute{
 				Description: "Account name",
 				Required:    true,
 			},
 			"type": schema.StringAttribute{
-				Description:        `Available values: "standard", "enterprise".`,
-				Optional:           true,
-				Computed:           true,
-				DeprecationMessage: "The 'type' field should no longer be set through the API.",
+				Description: `Available values: "standard", "enterprise".`,
+				Optional:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive("standard", "enterprise"),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"managed_by": schema.SingleNestedAttribute{

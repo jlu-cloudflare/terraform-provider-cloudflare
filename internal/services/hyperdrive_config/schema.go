@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -21,7 +20,6 @@ var _ resource.ResourceWithConfigValidators = (*HyperdriveConfigResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Hyperdrive Read",
@@ -106,8 +104,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					"disabled": schema.BoolAttribute{
 						Description: "Set to true to disable caching of SQL responses. Default is false.",
 						Optional:    true,
-						Computed:    true,
-						Default:     booldefault.StaticBool(false),
 					},
 					"max_age": schema.Int64Attribute{
 						Description: "Specify the maximum duration (in seconds) items should persist in the cache. Defaults to 60 seconds if not specified.",

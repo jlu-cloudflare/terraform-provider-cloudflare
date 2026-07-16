@@ -7,11 +7,9 @@ import (
 
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -20,7 +18,6 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustAccessMTLSCertificateRe
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Access: Mutual TLS Certificates Read",
@@ -52,26 +49,18 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Description: "The name of the certificate.",
 				Required:    true,
 			},
-			"associated_hostnames": schema.SetAttribute{
+			"associated_hostnames": schema.ListAttribute{
 				Description: "The hostnames of the applications that will use this certificate.",
-				Computed:    true,
 				Optional:    true,
 				ElementType: types.StringType,
-				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
 			},
 			"expires_on": schema.StringAttribute{
 				Computed:   true,
 				CustomType: timetypes.RFC3339Type{},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"fingerprint": schema.StringAttribute{
 				Description: "The MD5 fingerprint of the certificate.",
 				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 		},
 	}

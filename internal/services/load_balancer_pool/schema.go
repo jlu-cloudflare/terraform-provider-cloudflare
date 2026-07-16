@@ -5,6 +5,7 @@ package load_balancer_pool
 import (
 	"context"
 
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
@@ -15,21 +16,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 )
 
 var _ resource.ResourceWithConfigValidators = (*LoadBalancerPoolResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Load Balancing: Monitors and Pools Read",
@@ -50,7 +47,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Description: "A short name (tag) for the pool. Only alphanumeric characters, hyphens, and underscores are allowed.",
 				Required:    true,
 			},
-			"origins": schema.ListNestedAttribute{
+			"origins": schema.SetNestedAttribute{
 				Description: "The list of origins within this pool. Traffic directed at this pool is balanced across all currently healthy origins, provided the pool itself is healthy.",
 				Required:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -95,7 +92,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							Description: "The port for upstream connections. A value of 0 means the default port for the protocol will be used.",
 							Computed:    true,
 							Optional:    true,
-							// Default:     int64default.StaticInt64(0),
+							Default:     int64default.StaticInt64(0),
 						},
 						"virtual_network_id": schema.StringAttribute{
 							Description: "The virtual network subnet ID the origin belongs in. Virtual network must also belong to the account.",
@@ -221,7 +218,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						Default: stringdefault.StaticString("hash"),
 					},
 				},
-				PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 			},
 			"notification_filter": schema.SingleNestedAttribute{
 				Description: "Filter pool and origin health notifications by resource type or health status. Use null to reset.",
@@ -283,9 +279,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"created_on": schema.StringAttribute{
 				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"disabled_at": schema.StringAttribute{
 				Description: "This field shows up only if the pool is disabled. This field is set with the time the pool was disabled at.",

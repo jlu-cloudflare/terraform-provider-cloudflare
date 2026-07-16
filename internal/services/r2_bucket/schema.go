@@ -17,39 +17,8 @@ import (
 
 var _ resource.ResourceWithConfigValidators = (*R2BucketResource)(nil)
 
-// locationIgnorePlanModifier normalizes location values to lowercase
-func locationIgnorePlanModifier() planmodifier.String {
-	return &locationNormalizer{}
-}
-
-type locationNormalizer struct{}
-
-func (m *locationNormalizer) Description(ctx context.Context) string {
-	return "Ignores changes to location"
-}
-
-func (m *locationNormalizer) MarkdownDescription(ctx context.Context) string {
-	return "Ignores changes to location"
-}
-
-func (m *locationNormalizer) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-
-	// If state exists, preserve state value
-	if !req.StateValue.IsNull() {
-		resp.PlanValue = req.StateValue
-		return
-	}
-
-	// Otherwise, use the config value as-is (no normalization)
-	resp.PlanValue = req.ConfigValue
-}
-
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Workers R2 Storage Write",
@@ -72,7 +41,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"location": schema.StringAttribute{
-				Description: "Location of the bucket.\nAvailable values: \"apac\", \"eeur\", \"enam\", \"weur\", \"wnam\", \"oc\".  Note: `location` is only honored the first time a bucket with a given name is created. If you delete and recreate a bucket with the same name, the original bucket location will be used. It is also a best-effort, not a guarantee, of bucket location.",
+				Description: "Location of the bucket.\nAvailable values: \"apac\", \"eeur\", \"enam\", \"weur\", \"wnam\", \"oc\".",
 				Computed:    true,
 				Optional:    true,
 				Validators: []validator.String{
@@ -85,23 +54,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						"oc",
 					),
 				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplaceIfConfigured(),
-					locationIgnorePlanModifier(),
-				},
-			},
-			"jurisdiction": schema.StringAttribute{
-				Description: "Jurisdiction where objects in this bucket are guaranteed to be stored.\nAvailable values: \"default\", \"eu\", \"fedramp\".",
-				Optional:    true,
-				Computed:    true,
-				Default:     stringdefault.StaticString("default"),
-				Validators: []validator.String{
-					stringvalidator.OneOfCaseInsensitive(
-						"default",
-						"eu",
-						"fedramp",
-					),
-				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplaceIfConfigured()},
 			},
 			"storage_class": schema.StringAttribute{
 				Description: "Storage class for newly uploaded objects, unless specified otherwise.\nAvailable values: \"Standard\", \"InfrequentAccess\".",
@@ -110,12 +63,24 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive("Standard", "InfrequentAccess"),
 				},
-				Default: stringdefault.StaticString("Standard"),
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplaceIfConfigured()},
+				Default:       stringdefault.StaticString("Standard"),
 			},
 			"creation_date": schema.StringAttribute{
-				Description:   "Creation timestamp.",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Description: "Creation timestamp.",
+				Computed:    true,
+			},
+			"jurisdiction": schema.StringAttribute{
+				Description: "Jurisdiction where objects in this bucket are guaranteed to be stored.\nAvailable values: \"default\", \"eu\", \"fedramp\".",
+				Computed:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOfCaseInsensitive(
+						"default",
+						"eu",
+						"fedramp",
+					),
+				},
+				Default: stringdefault.StaticString("default"),
 			},
 		},
 	}

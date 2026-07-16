@@ -19,7 +19,7 @@ type WorkerVersionsResultListDataSourceEnvelope struct {
 }
 
 type WorkerVersionsDataSourceModel struct {
-	AccountID types.String                                                      `tfsdk:"account_id" path:"account_id,optional"`
+	AccountID types.String                                                      `tfsdk:"account_id" path:"account_id,required"`
 	WorkerID  types.String                                                      `tfsdk:"worker_id" path:"worker_id,required"`
 	MaxItems  types.Int64                                                       `tfsdk:"max_items"`
 	Result    customfield.NestedObjectList[WorkerVersionsResultDataSourceModel] `tfsdk:"result"`
@@ -47,7 +47,6 @@ type WorkerVersionsResultDataSourceModel struct {
 	Containers          customfield.NestedObjectSet[WorkerVersionsContainersDataSourceModel]           `tfsdk:"containers" json:"containers,computed"`
 	Limits              customfield.NestedObject[WorkerVersionsLimitsDataSourceModel]                  `tfsdk:"limits" json:"limits,computed"`
 	MainModule          types.String                                                                   `tfsdk:"main_module" json:"main_module,computed"`
-	MainScriptBase64   types.String                                                        `tfsdk:"main_script_base64" json:"main_script_base64,computed"`
 	MigrationTag        types.String                                                                   `tfsdk:"migration_tag" json:"migration_tag,computed"`
 	Migrations          customfield.NestedObject[WorkerVersionsMigrationsDataSourceModel]              `tfsdk:"migrations" json:"migrations,computed"`
 	Modules             customfield.NestedObjectSet[WorkerVersionsModulesDataSourceModel]              `tfsdk:"modules" json:"modules,computed"`

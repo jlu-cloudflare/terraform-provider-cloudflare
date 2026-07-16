@@ -22,7 +22,6 @@ var _ resource.ResourceWithConfigValidators = (*CustomCsrResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Account: SSL and Certificates Read",

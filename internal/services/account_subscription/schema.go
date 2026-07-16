@@ -21,7 +21,6 @@ var _ resource.ResourceWithConfigValidators = (*AccountSubscriptionResource)(nil
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Billing Read",
@@ -42,14 +41,12 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"frequency": schema.StringAttribute{
 				Description: "How often the subscription is renewed automatically.\nAvailable values: \"weekly\", \"monthly\", \"quarterly\", \"yearly\".",
 				Optional:    true,
-				Computed:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive(
 						"weekly",
 						"monthly",
 						"quarterly",
 						"yearly",
-						"not-applicable",
 					),
 				},
 			},
@@ -60,24 +57,42 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				CustomType:  customfield.NewNestedObjectType[AccountSubscriptionRatePlanModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"id": schema.StringAttribute{
-						Description: "The ID of the rate plan.",
+						Description: "The ID of the rate plan.\nAvailable values: \"free\", \"lite\", \"pro\", \"pro_plus\", \"business\", \"enterprise\", \"partners_free\", \"partners_pro\", \"partners_business\", \"partners_enterprise\".",
 						Optional:    true,
+						Validators: []validator.String{
+							stringvalidator.OneOfCaseInsensitive(
+								"free",
+								"lite",
+								"pro",
+								"pro_plus",
+								"business",
+								"enterprise",
+								"partners_free",
+								"partners_pro",
+								"partners_business",
+								"partners_enterprise",
+							),
+						},
 					},
 					"currency": schema.StringAttribute{
 						Description: "The currency applied to the rate plan subscription.",
 						Computed:    true,
+						Optional:    true,
 					},
 					"externally_managed": schema.BoolAttribute{
 						Description: "Whether this rate plan is managed externally from Cloudflare.",
 						Computed:    true,
+						Optional:    true,
 					},
 					"is_contract": schema.BoolAttribute{
 						Description: "Whether a rate plan is enterprise-based (or newly adopted term contract).",
 						Computed:    true,
+						Optional:    true,
 					},
 					"public_name": schema.StringAttribute{
 						Description: "The full name of the rate plan.",
 						Computed:    true,
+						Optional:    true,
 					},
 					"scope": schema.StringAttribute{
 						Description: "The scope that this rate plan applies to.",
@@ -86,8 +101,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					},
 					"sets": schema.ListAttribute{
 						Description: "The list of sets this rate plan applies to. Returns array of strings.",
-						Computed:    true,
-						CustomType:  customfield.NewListType[types.String](ctx),
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 				},

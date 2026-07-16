@@ -11,7 +11,6 @@ import (
 )
 
 func TestWorkersForPlatformsDispatchNamespaceDataSourceModelSchemaParity(t *testing.T) {
-	t.Skip("model/schema parity issue due to computed attribute dropped from model")
 	t.Parallel()
 	model := (*workers_for_platforms_dispatch_namespace.WorkersForPlatformsDispatchNamespaceDataSourceModel)(nil)
 	schema := workers_for_platforms_dispatch_namespace.DataSourceSchema(context.TODO())

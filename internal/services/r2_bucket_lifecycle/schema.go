@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
@@ -19,7 +18,6 @@ var _ resource.ResourceWithConfigValidators = (*R2BucketLifecycleResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.StringAttribute{
 				Description:   "Account ID.",
@@ -30,19 +28,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Description:   "Name of the bucket.",
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
-			"jurisdiction": schema.StringAttribute{
-				Description: "Jurisdiction of the bucket",
-				Optional:    true,
-				Computed:    true,
-				Default:     stringdefault.StaticString("default"),
-				Validators: []validator.String{
-					stringvalidator.OneOfCaseInsensitive(
-						"default",
-						"eu",
-						"fedramp",
-					),
-				},
 			},
 			"rules": schema.ListNestedAttribute{
 				Optional: true,

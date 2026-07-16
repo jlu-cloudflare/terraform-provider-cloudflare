@@ -27,7 +27,6 @@ var _ resource.ResourceWithConfigValidators = (*StreamResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Stream Read",
@@ -207,7 +206,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						Computed:    true,
 					},
 					"pct_complete": schema.StringAttribute{
-						Description: "Indicates the size of the entire upload in bytes. The value must be a non-negative integer.",
+						Description: "Indicates the progress as a percentage between 0 and 100.",
 						Computed:    true,
 					},
 					"state": schema.StringAttribute{
