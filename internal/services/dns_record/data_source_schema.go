@@ -42,7 +42,7 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 			},
 			"zone_id": schema.StringAttribute{
 				Description: "Identifier.",
-				Optional:    true,
+				Required:    true,
 			},
 			"include_shadow_metadata": schema.BoolAttribute{
 				Description: "Whether to include shadow metadata in the `meta` field of each record in the response. See [Shadowed records](https://developers.cloudflare.com/dns/manage-dns-records/reference/shadowed-records).",

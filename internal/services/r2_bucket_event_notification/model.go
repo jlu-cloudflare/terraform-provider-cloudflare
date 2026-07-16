@@ -12,12 +12,11 @@ type R2BucketEventNotificationResultEnvelope struct {
 }
 
 type R2BucketEventNotificationModel struct {
-	AccountID    types.String                            `tfsdk:"account_id" path:"account_id,required"`
-	BucketName   types.String                            `tfsdk:"bucket_name" path:"bucket_name,required"`
-	QueueID      types.String                            `tfsdk:"queue_id" path:"queue_id,required"`
-	Rules        *[]*R2BucketEventNotificationRulesModel `tfsdk:"rules" json:"rules,required"`
-	QueueName    types.String                            `tfsdk:"queue_name" json:"queueName,computed"`
-	Jurisdiction types.String                            `tfsdk:"jurisdiction" json:"-,computed_optional,no_refresh"`
+	AccountID  types.String                            `tfsdk:"account_id" path:"account_id,required"`
+	BucketName types.String                            `tfsdk:"bucket_name" path:"bucket_name,required"`
+	QueueID    types.String                            `tfsdk:"queue_id" path:"queue_id,required"`
+	Rules      *[]*R2BucketEventNotificationRulesModel `tfsdk:"rules" json:"rules,required"`
+	QueueName  types.String                            `tfsdk:"queue_name" json:"queueName,computed"`
 }
 
 func (m R2BucketEventNotificationModel) MarshalJSON() (data []byte, err error) {
@@ -33,20 +32,4 @@ type R2BucketEventNotificationRulesModel struct {
 	Description types.String    `tfsdk:"description" json:"description,optional"`
 	Prefix      types.String    `tfsdk:"prefix" json:"prefix,optional"`
 	Suffix      types.String    `tfsdk:"suffix" json:"suffix,optional"`
-}
-
-func (enRules1 R2BucketEventNotificationRulesModel) Equal(enRules2 R2BucketEventNotificationRulesModel) bool {
-	if !stringEqualNullOrEmpty(enRules1.Prefix, enRules2.Prefix) {
-		return false
-	}
-
-	if !stringEqualNullOrEmpty(enRules1.Suffix, enRules2.Suffix) {
-		return false
-	}
-
-	if !stringEqualNullOrEmpty(enRules1.Description, enRules2.Description) {
-		return false
-	}
-
-	return actionsEqual(enRules1.Actions, enRules2.Actions)
 }

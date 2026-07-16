@@ -74,8 +74,7 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"configuration": schema.SingleNestedAttribute{
-				Optional:   true,
-				CustomType: customfield.NewNestedObjectType[AccessRulesFilterConfigurationDataSourceModel](ctx),
+				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"target": schema.StringAttribute{
 						Description: "Defines the target to search in existing rules.\nAvailable values: \"ip\", \"ip_range\", \"asn\", \"country\".",

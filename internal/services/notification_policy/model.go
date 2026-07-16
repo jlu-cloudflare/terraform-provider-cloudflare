@@ -4,7 +4,6 @@ package notification_policy
 
 import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -36,9 +35,9 @@ func (m NotificationPolicyModel) MarshalJSONForUpdate(state NotificationPolicyMo
 }
 
 type NotificationPolicyMechanismsModel struct {
-	Email     customfield.NestedObjectSet[NotificationPolicyMechanismsEmailModel]     `tfsdk:"email" json:"email,optional"`
-	Pagerduty customfield.NestedObjectSet[NotificationPolicyMechanismsPagerdutyModel] `tfsdk:"pagerduty" json:"pagerduty,optional"`
-	Webhooks  customfield.NestedObjectSet[NotificationPolicyMechanismsWebhooksModel]  `tfsdk:"webhooks" json:"webhooks,optional"`
+	Email     *[]*NotificationPolicyMechanismsEmailModel     `tfsdk:"email" json:"email,optional"`
+	Pagerduty *[]*NotificationPolicyMechanismsPagerdutyModel `tfsdk:"pagerduty" json:"pagerduty,optional"`
+	Webhooks  *[]*NotificationPolicyMechanismsWebhooksModel  `tfsdk:"webhooks" json:"webhooks,optional"`
 }
 
 type NotificationPolicyMechanismsEmailModel struct {

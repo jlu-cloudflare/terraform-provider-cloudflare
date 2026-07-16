@@ -22,7 +22,6 @@ var _ resource.ResourceWithConfigValidators = (*MoQRelayResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "Server-generated unique identifier (32 hex chars).",

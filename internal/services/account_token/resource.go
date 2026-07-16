@@ -11,6 +11,7 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/accounts"
 	"github.com/cloudflare/cloudflare-go/v7/option"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -84,7 +85,7 @@ func (r *AccountTokenResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = UnmarshalComputedCustom(bytes, &env)
+	err = apijson.UnmarshalComputed(bytes, &env)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
@@ -110,7 +111,6 @@ func (r *AccountTokenResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	tokenValue := state.Value
 
 	dataBytes, err := data.MarshalJSONForUpdate(*state)
 	if err != nil {
@@ -134,13 +134,12 @@ func (r *AccountTokenResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = UnmarshalComputedCustom(bytes, &env)
+	err = apijson.UnmarshalComputed(bytes, &env)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
 	data = &env.Result
-	data.Value = tokenValue
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -154,7 +153,6 @@ func (r *AccountTokenResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	tokenValue := data.Value
 	res := new(http.Response)
 	env := AccountTokenResultEnvelope{*data}
 	_, err := r.client.Accounts.Tokens.Get(
@@ -176,27 +174,12 @@ func (r *AccountTokenResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = UnmarshalCustom(bytes, &env)
+	err = apijson.Unmarshal(bytes, &env)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
 	data = &env.Result
-	data.Value = tokenValue
-
-	// If the token is expired or revoked-exposed, treat it as if the resource
-	// no longer exists. Terraform will plan a Create to replace it with a fresh
-	// token. This avoids mutating the token during Read (which runs during plan)
-	// and ensures the user explicitly approves the recreation via apply.
-	status := data.Status.ValueString()
-	if status == "expired" || status == "revoked (exposed)" {
-		resp.Diagnostics.AddWarning(
-			"Token expired or revoked",
-			fmt.Sprintf("Token %q is in %q status and is no longer usable. It will be removed from state and recreated on the next apply.", data.Name.ValueString(), status),
-		)
-		resp.State.RemoveResource(ctx)
-		return
-	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -261,7 +244,7 @@ func (r *AccountTokenResource) ImportState(ctx context.Context, req resource.Imp
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = UnmarshalCustom(bytes, &env)
+	err = apijson.Unmarshal(bytes, &env)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return

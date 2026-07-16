@@ -3,6 +3,7 @@
 package api_token
 
 import (
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -26,21 +27,24 @@ type APITokenModel struct {
 }
 
 func (m APITokenModel) MarshalJSON() (data []byte, err error) {
-	return MarshalCustom(m)
+	return apijson.MarshalRoot(m)
 }
 
 func (m APITokenModel) MarshalJSONForUpdate(state APITokenModel) (data []byte, err error) {
-	return MarshalCustom(m)
+	return apijson.MarshalForUpdate(m, state)
 }
 
 type APITokenPoliciesModel struct {
+	ID               types.String                              `tfsdk:"id" json:"id,computed,force_encode,encode_state_for_unknown"`
 	Effect           types.String                              `tfsdk:"effect" json:"effect,required"`
 	PermissionGroups *[]*APITokenPoliciesPermissionGroupsModel `tfsdk:"permission_groups" json:"permission_groups,required"`
-	Resources        types.String                              `tfsdk:"resources" json:"resources,required"`
+	Resources        *map[string]types.String                  `tfsdk:"resources" json:"resources,required"`
 }
 
 type APITokenPoliciesPermissionGroupsModel struct {
-	ID types.String `tfsdk:"id" json:"id,required"`
+	ID   types.String                               `tfsdk:"id" json:"id,required"`
+	Meta *APITokenPoliciesPermissionGroupsMetaModel `tfsdk:"meta" json:"meta,optional"`
+	Name types.String                               `tfsdk:"name" json:"name,computed"`
 }
 
 type APITokenPoliciesPermissionGroupsMetaModel struct {

@@ -14,7 +14,6 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -104,8 +103,6 @@ func (r *ZeroTrustAccessServiceTokenResource) Create(ctx context.Context, req re
 
 func (r *ZeroTrustAccessServiceTokenResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data *ZeroTrustAccessServiceTokenModel
-	secret := types.StringNull()
-	req.State.GetAttribute(ctx, path.Root("client_secret"), &secret)
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
@@ -154,23 +151,13 @@ func (r *ZeroTrustAccessServiceTokenResource) Update(ctx context.Context, req re
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
-
 	data = &env.Result
-
-	// Preserve the old client_secret if the API didn't return a new one
-	// New secret happens on Create and if Version changes
-	if data.ClientSecret.IsNull() {
-		data.ClientSecret = secret
-	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ZeroTrustAccessServiceTokenResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data *ZeroTrustAccessServiceTokenModel
-
-	secret := types.StringNull()
-	req.State.GetAttribute(ctx, path.Root("client_secret"), &secret)
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
@@ -210,9 +197,7 @@ func (r *ZeroTrustAccessServiceTokenResource) Read(ctx context.Context, req reso
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
-
 	data = &env.Result
-	data.ClientSecret = secret
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -302,6 +287,6 @@ func (r *ZeroTrustAccessServiceTokenResource) ImportState(ctx context.Context, r
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ZeroTrustAccessServiceTokenResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, res *resource.ModifyPlanResponse) {
-	modifyPlan(ctx, req, res)
+func (r *ZeroTrustAccessServiceTokenResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, _ *resource.ModifyPlanResponse) {
+
 }

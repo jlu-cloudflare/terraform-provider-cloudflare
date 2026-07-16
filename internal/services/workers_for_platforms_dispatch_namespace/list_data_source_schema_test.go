@@ -11,7 +11,6 @@ import (
 )
 
 func TestWorkersForPlatformsDispatchNamespacesDataSourceModelSchemaParity(t *testing.T) {
-	t.Skip("skip due to attribute intentionally ignored computed attribute")
 	t.Parallel()
 	model := (*workers_for_platforms_dispatch_namespace.WorkersForPlatformsDispatchNamespacesDataSourceModel)(nil)
 	schema := workers_for_platforms_dispatch_namespace.ListDataSourceSchema(context.TODO())

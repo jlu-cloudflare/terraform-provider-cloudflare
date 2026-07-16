@@ -5,7 +5,6 @@ package hostname_tls_setting
 import (
 	"context"
 
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -20,7 +19,6 @@ var _ resource.ResourceWithConfigValidators = (*HostnameTLSSettingResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"SSL and Certificates Read",
@@ -50,10 +48,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						"http2",
 					),
 				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseNonNullStateForUnknown(),
-					stringplanmodifier.RequiresReplace(),
-				},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown(), stringplanmodifier.RequiresReplace()},
 			},
 			"zone_id": schema.StringAttribute{
 				Description:   "Identifier.",
@@ -62,15 +57,21 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"hostname": schema.StringAttribute{
 				Description:   "The hostname for which the tls settings are set.",
-				Required:      true,
+				Optional:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"value": schema.DynamicAttribute{
+			"value": schema.StringAttribute{
 				Description: "The TLS setting value.\nThe type depends on the `setting_id` used in the request path:\n- `ciphers`: an array of allowed cipher suite strings in BoringSSL format (e.g., `[\"ECDHE-RSA-AES128-GCM-SHA256\", \"AES128-GCM-SHA256\"]`).\n- `min_tls_version`: a string indicating the minimum TLS version — one of `\"1.0\"`, `\"1.1\"`, `\"1.2\"`, or `\"1.3\"` (e.g., `\"1.2\"`).\n- `http2`: a string indicating whether HTTP/2 is enabled — `\"on\"` or `\"off\"` (e.g., `\"on\"`).\nAvailable values: \"1.0\", \"1.1\", \"1.2\", \"1.3\", \"on\", \"off\".",
 				Required:    true,
-				CustomType:  customfield.NormalizedDynamicType{},
-				PlanModifiers: []planmodifier.Dynamic{
-					customfield.NormalizeDynamicPlanModifier(),
+				Validators: []validator.String{
+					stringvalidator.OneOfCaseInsensitive(
+						"1.0",
+						"1.1",
+						"1.2",
+						"1.3",
+						"on",
+						"off",
+					),
 				},
 			},
 			"created_at": schema.StringAttribute{

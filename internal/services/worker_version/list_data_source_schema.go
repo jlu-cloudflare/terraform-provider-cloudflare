@@ -31,7 +31,7 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.StringAttribute{
 				Description: "Identifier.",
-				Optional:    true,
+				Required:    true,
 			},
 			"worker_id": schema.StringAttribute{
 				Description: "Identifier for the Worker, which can be ID or name.",
@@ -484,10 +484,6 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 						},
 						"main_module": schema.StringAttribute{
 							Description: "The name of the main module in the `modules` array (e.g. the name of the module that exports a `fetch` handler).",
-							Computed:    true,
-						},
-						"main_script_base64": schema.StringAttribute{
-							Description: "The base64-encoded main script content. This is only returned for service worker syntax workers (not ES modules).",
 							Computed:    true,
 						},
 						"migration_tag": schema.StringAttribute{

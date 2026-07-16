@@ -5,7 +5,6 @@ package custom_origin_trust_store
 import (
 	"context"
 
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/utils"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -20,7 +19,6 @@ var _ resource.ResourceWithConfigValidators = (*CustomOriginTrustStoreResource)(
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"SSL and Certificates Read",
@@ -41,7 +39,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"certificate": schema.StringAttribute{
 				Description:   "The root CA certificate in PEM format. Only root CA certificates are accepted; intermediate and leaf certificates are not supported.",
 				Required:      true,
-				PlanModifiers: []planmodifier.String{utils.RequiresReplaceIfNotCertificateSemantic()},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"expires_on": schema.StringAttribute{
 				Description: "When the certificate expires.",

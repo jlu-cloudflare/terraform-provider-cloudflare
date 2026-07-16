@@ -3,6 +3,7 @@
 package page_rule
 
 import (
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -18,15 +19,12 @@ type PageRuleModel struct {
 	Status     types.String      `tfsdk:"status" json:"status,computed_optional"`
 	CreatedOn  timetypes.RFC3339 `tfsdk:"created_on" json:"created_on,computed" format:"date-time"`
 	ModifiedOn timetypes.RFC3339 `tfsdk:"modified_on" json:"modified_on,computed" format:"date-time"`
-
-	Target  types.String          `tfsdk:"target" json:"target,required"`
-	Actions *PageRuleActionsModel `tfsdk:"actions" json:"actions,required"`
 }
 
 func (m PageRuleModel) MarshalJSON() (data []byte, err error) {
-	return m.marshalCustom()
+	return apijson.MarshalRoot(m)
 }
 
 func (m PageRuleModel) MarshalJSONForUpdate(state PageRuleModel) (data []byte, err error) {
-	return m.marshalCustomForUpdate(state)
+	return apijson.MarshalForUpdate(m, state)
 }

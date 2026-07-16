@@ -153,22 +153,12 @@ func (r *AccountSubscriptionResource) Read(ctx context.Context, req resource.Rea
 		return
 	}
 
-	// Store the account ID for later use
-	accountID := data.AccountID.ValueString()
-	subscriptionID := data.ID.ValueString()
-
 	res := new(http.Response)
-	// Define a custom response envelope for list response
-	type SubscriptionListResponse struct {
-		Result  []AccountSubscriptionModel `json:"result"`
-		Success bool                       `json:"success"`
-	}
-
-	listResponse := &SubscriptionListResponse{}
+	env := AccountSubscriptionResultEnvelope{*data}
 	_, err := r.client.Accounts.Subscriptions.Get(
 		ctx,
 		accounts.SubscriptionGetParams{
-			AccountID: cloudflare.F(accountID),
+			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -183,32 +173,12 @@ func (r *AccountSubscriptionResource) Read(ctx context.Context, req resource.Rea
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = apijson.Unmarshal(bytes, &listResponse)
+	err = apijson.Unmarshal(bytes, &env)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
-	// Find the subscription with matching ID
-	found := false
-	for _, subscription := range listResponse.Result {
-		if subscription.ID.ValueString() == subscriptionID {
-			// Found the subscription, update the data
-
-			*data = subscription
-
-			// Ensure account ID is set correctly
-			data.AccountID = types.StringValue(accountID)
-
-			found = true
-			break
-		}
-	}
-
-	if !found && subscriptionID != "" {
-		resp.Diagnostics.AddWarning("Resource not found", "The subscription with ID "+subscriptionID+" was not found and will be removed from state.")
-		resp.State.RemoveResource(ctx)
-		return
-	}
+	data = &env.Result
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -241,35 +211,25 @@ func (r *AccountSubscriptionResource) Delete(ctx context.Context, req resource.D
 func (r *AccountSubscriptionResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	var data = new(AccountSubscriptionModel)
 
-	path_account_id := ""
-	path_subscription_id := ""
-
+	path := ""
 	diags := importpath.ParseImportID(
 		req.ID,
-		"<account_id>/<subscription_id>",
-		&path_account_id,
-		&path_subscription_id,
+		"<account_id>",
+		&path,
 	)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	data.AccountID = types.StringValue(path_account_id)
-	data.ID = types.StringValue(path_subscription_id)
+	data.AccountID = types.StringValue(path)
 
 	res := new(http.Response)
-	// Define a custom response envelope for list response
-	type SubscriptionListResponse struct {
-		Result  []AccountSubscriptionModel `json:"result"`
-		Success bool                       `json:"success"`
-	}
-
-	listResponse := &SubscriptionListResponse{}
+	env := AccountSubscriptionResultEnvelope{*data}
 	_, err := r.client.Accounts.Subscriptions.Get(
 		ctx,
 		accounts.SubscriptionGetParams{
-			AccountID: cloudflare.F(data.AccountID.ValueString()),
+			AccountID: cloudflare.F(path),
 		},
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -279,33 +239,12 @@ func (r *AccountSubscriptionResource) ImportState(ctx context.Context, req resou
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = apijson.Unmarshal(bytes, &listResponse)
+	err = apijson.Unmarshal(bytes, &env)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
-	// Find the subscription with matching ID
-	found := false
-	for _, subscription := range listResponse.Result {
-		if subscription.ID.ValueString() == data.ID.ValueString() {
-			// Found the subscription, update the data
-			*data = subscription
-
-			// Ensure account ID is set correctly
-			data.AccountID = types.StringValue(path_account_id)
-
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		resp.Diagnostics.AddError(
-			"Subscription not found",
-			fmt.Sprintf("Subscription with ID %s not found in account %s", data.ID.ValueString(), data.AccountID.ValueString()),
-		)
-		return
-	}
+	data = &env.Result
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

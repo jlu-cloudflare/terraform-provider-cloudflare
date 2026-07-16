@@ -4,8 +4,6 @@ package list_item
 
 import (
 	"context"
-	"net/url"
-	"strings"
 
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
@@ -13,9 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -25,7 +21,6 @@ var _ resource.ResourceWithConfigValidators = (*ListItemResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Account Filter Lists Edit",
@@ -43,27 +38,111 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"id": schema.StringAttribute{
-				Description:   "The unique ID of the item in the List.",
-				Computed:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			"item_id": schema.StringAttribute{
+				Description:   "Defines the unique ID of the item in the List.",
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+			"body": schema.ListNestedAttribute{
+				Required: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"ip": schema.StringAttribute{
+							Description: "An IPv4 address, an IPv4 CIDR, an IPv6 address, or an IPv6 CIDR.",
+							Optional:    true,
+						},
+						"comment": schema.StringAttribute{
+							Description: "Defines an informative summary of the list item.",
+							Optional:    true,
+						},
+						"redirect": schema.SingleNestedAttribute{
+							Description: "The definition of the redirect.",
+							Optional:    true,
+							Attributes: map[string]schema.Attribute{
+								"source_url": schema.StringAttribute{
+									Required: true,
+								},
+								"target_url": schema.StringAttribute{
+									Required: true,
+								},
+								"include_subdomains": schema.BoolAttribute{
+									Computed: true,
+									Optional: true,
+									Default:  booldefault.StaticBool(false),
+								},
+								"preserve_path_suffix": schema.BoolAttribute{
+									Computed: true,
+									Optional: true,
+									Default:  booldefault.StaticBool(false),
+								},
+								"preserve_query_string": schema.BoolAttribute{
+									Computed: true,
+									Optional: true,
+									Default:  booldefault.StaticBool(false),
+								},
+								"status_code": schema.Int64Attribute{
+									Description: "Available values: 301, 302, 307, 308.",
+									Computed:    true,
+									Optional:    true,
+									Validators: []validator.Int64{
+										int64validator.OneOf(
+											301,
+											302,
+											307,
+											308,
+										),
+									},
+									Default: int64default.StaticInt64(301),
+								},
+								"subpath_matching": schema.BoolAttribute{
+									Computed: true,
+									Optional: true,
+									Default:  booldefault.StaticBool(false),
+								},
+							},
+						},
+						"hostname": schema.SingleNestedAttribute{
+							Description: "Valid characters for hostnames are ASCII(7) letters from a to z, the digits from 0 to 9, wildcards (*), and the hyphen (-).",
+							Optional:    true,
+							Attributes: map[string]schema.Attribute{
+								"url_hostname": schema.StringAttribute{
+									Required: true,
+								},
+								"exclude_exact_hostname": schema.BoolAttribute{
+									Description: "Only applies to wildcard hostnames (e.g., *.example.com). When true (default), only subdomains are blocked. When false, both the root domain and subdomains are blocked.",
+									Optional:    true,
+								},
+							},
+						},
+						"asn": schema.Int64Attribute{
+							Description: "Defines a non-negative 32 bit integer.",
+							Optional:    true,
+						},
+					},
+				},
 			},
 			"asn": schema.Int64Attribute{
-				Description:   "A non-negative 32 bit integer",
-				Optional:      true,
-				PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplace()},
+				Description: "Defines a non-negative 32 bit integer.",
+				Computed:    true,
 			},
 			"comment": schema.StringAttribute{
-				Description:   "An informative summary of the list item.",
-				Optional:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplaceIfConfigured()},
+				Description: "Defines an informative summary of the list item.",
+				Computed:    true,
 			},
 			"created_on": schema.StringAttribute{
-				Description: "The RFC 3339 timestamp of when the item was created.",
+				Description: "The RFC 3339 timestamp of when the list was created.",
+				Computed:    true,
+			},
+			"id": schema.StringAttribute{
+				Description: "Defines the unique ID of the item in the List.",
+				Computed:    true,
+			},
+			"ip": schema.StringAttribute{
+				Description: "An IPv4 address, an IPv4 CIDR, an IPv6 address, or an IPv6 CIDR.",
 				Computed:    true,
 			},
 			"modified_on": schema.StringAttribute{
-				Description: "The RFC 3339 timestamp of when the item was last modified.",
+				Description: "The RFC 3339 timestamp of when the list was last modified.",
 				Computed:    true,
 			},
 			"operation_id": schema.StringAttribute{
@@ -72,61 +151,44 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"hostname": schema.SingleNestedAttribute{
 				Description: "Valid characters for hostnames are ASCII(7) letters from a to z, the digits from 0 to 9, wildcards (*), and the hyphen (-).",
-				Optional:    true,
+				Computed:    true,
 				CustomType:  customfield.NewNestedObjectType[ListItemHostnameModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"url_hostname": schema.StringAttribute{
-						Required:      true,
-						PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Computed: true,
 					},
 					"exclude_exact_hostname": schema.BoolAttribute{
-						Description:   "Only applies to wildcard hostnames (e.g., *.example.com). When true (default), only subdomains are blocked. When false, both the root domain and subdomains are blocked.",
-						Optional:      true,
-						PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplaceIfConfigured()},
+						Description: "Only applies to wildcard hostnames (e.g., *.example.com). When true (default), only subdomains are blocked. When false, both the root domain and subdomains are blocked.",
+						Computed:    true,
 					},
 				},
 			},
-			"ip": schema.StringAttribute{
-				Description:   "An IPv4 address, an IPv4 CIDR, an IPv6 address, or an IPv6 CIDR.",
-				Optional:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
 			"redirect": schema.SingleNestedAttribute{
 				Description: "The definition of the redirect.",
-				Optional:    true,
+				Computed:    true,
 				CustomType:  customfield.NewNestedObjectType[ListItemRedirectModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"source_url": schema.StringAttribute{
-						Required:      true,
-						PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-						Validators:    []validator.String{SourceUrlValidator{}},
+						Computed: true,
 					},
 					"target_url": schema.StringAttribute{
-						Required:      true,
-						PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+						Computed: true,
 					},
 					"include_subdomains": schema.BoolAttribute{
-						Computed:      true,
-						Optional:      true,
-						Default:       booldefault.StaticBool(false),
-						PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplaceIfConfigured()},
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
 					},
 					"preserve_path_suffix": schema.BoolAttribute{
-						Computed:      true,
-						Optional:      true,
-						Default:       booldefault.StaticBool(false),
-						PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplaceIfConfigured()},
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
 					},
 					"preserve_query_string": schema.BoolAttribute{
-						Computed:      true,
-						Optional:      true,
-						Default:       booldefault.StaticBool(false),
-						PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplaceIfConfigured()},
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
 					},
 					"status_code": schema.Int64Attribute{
 						Description: "Available values: 301, 302, 307, 308.",
 						Computed:    true,
-						Optional:    true,
 						Validators: []validator.Int64{
 							int64validator.OneOf(
 								301,
@@ -135,14 +197,11 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								308,
 							),
 						},
-						Default:       int64default.StaticInt64(301),
-						PlanModifiers: []planmodifier.Int64{int64planmodifier.RequiresReplaceIfConfigured()},
+						Default: int64default.StaticInt64(301),
 					},
 					"subpath_matching": schema.BoolAttribute{
-						Computed:      true,
-						Optional:      true,
-						Default:       booldefault.StaticBool(false),
-						PlanModifiers: []planmodifier.Bool{boolplanmodifier.RequiresReplaceIfConfigured()},
+						Computed: true,
+						Default:  booldefault.StaticBool(false),
 					},
 				},
 			},
@@ -156,34 +215,4 @@ func (r *ListItemResource) Schema(ctx context.Context, req resource.SchemaReques
 
 func (r *ListItemResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{}
-}
-
-type SourceUrlValidator struct{}
-
-func (v SourceUrlValidator) Description(ctx context.Context) string {
-	return "Validates that the URL path is not empty."
-}
-
-func (v SourceUrlValidator) MarkdownDescription(ctx context.Context) string {
-	return "Validates that the URL path is not empty."
-}
-
-func (v SourceUrlValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
-		return
-	}
-
-	rawUrl := req.ConfigValue.ValueString()
-	if !strings.HasPrefix(rawUrl, "http://") && !strings.HasPrefix(rawUrl, "https://") {
-		rawUrl = "https://" + rawUrl
-	}
-	u, err := url.Parse(rawUrl)
-	if err != nil {
-		resp.Diagnostics.AddAttributeError(req.Path, "Invalid URL", err.Error())
-		return
-	}
-	if u.Path == "" {
-		resp.Diagnostics.AddAttributeError(req.Path, "source_url path must not be empty", "The source_url path must not be empty, append a '/' at the end of the URL.")
-		return
-	}
 }

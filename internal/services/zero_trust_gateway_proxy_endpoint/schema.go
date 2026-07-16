@@ -19,7 +19,6 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustGatewayProxyEndpointRes
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:      true,
@@ -31,7 +30,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"kind": schema.StringAttribute{
 				Description: "The proxy endpoint kind\nAvailable values: \"ip\", \"identity\".",
-				Computed:    true,
 				Optional:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive("ip", "identity"),

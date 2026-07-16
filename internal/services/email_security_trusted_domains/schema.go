@@ -17,7 +17,6 @@ var _ resource.ResourceWithConfigValidators = (*EmailSecurityTrustedDomainsResou
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Cloud Email Security: Read",
@@ -37,14 +36,14 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"is_recent": schema.BoolAttribute{
 				Description: "Select to prevent recently registered domains from triggering a Suspicious or Malicious disposition.",
-				Optional:    true,
+				Required:    true,
 			},
 			"is_regex": schema.BoolAttribute{
-				Optional: true,
+				Required: true,
 			},
 			"is_similarity": schema.BoolAttribute{
 				Description: "Select for partner or other approved domains that have similar spelling to your connected domains. Prevents listed domains from triggering a Spoof disposition.",
-				Optional:    true,
+				Required:    true,
 			},
 			"pattern": schema.StringAttribute{
 				Required: true,

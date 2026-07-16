@@ -75,7 +75,7 @@ func (r *ShareRecipientResource) Create(ctx context.Context, req resource.Create
 		ctx,
 		data.ShareID.ValueString(),
 		resource_sharing.RecipientNewParams{
-			PathAccountID: cloudflare.F(data.AccountID.ValueString()),
+			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
 		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),

@@ -5,7 +5,6 @@ package notification_policy
 import (
 	"context"
 
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
@@ -23,7 +22,6 @@ var _ resource.ResourceWithConfigValidators = (*NotificationPolicyResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Account Settings Read",
@@ -129,9 +127,8 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Description: "List of IDs that will be used when dispatching a notification. IDs for email type will be the email address.",
 				Required:    true,
 				Attributes: map[string]schema.Attribute{
-					"email": schema.SetNestedAttribute{
-						Optional:   true,
-						CustomType: customfield.NewNestedObjectSetType[NotificationPolicyMechanismsEmailModel](ctx),
+					"email": schema.ListNestedAttribute{
+						Optional: true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"id": schema.StringAttribute{
@@ -141,9 +138,8 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 					},
-					"pagerduty": schema.SetNestedAttribute{
-						Optional:   true,
-						CustomType: customfield.NewNestedObjectSetType[NotificationPolicyMechanismsPagerdutyModel](ctx),
+					"pagerduty": schema.ListNestedAttribute{
+						Optional: true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"id": schema.StringAttribute{
@@ -153,9 +149,8 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 					},
-					"webhooks": schema.SetNestedAttribute{
-						Optional:   true,
-						CustomType: customfield.NewNestedObjectSetType[NotificationPolicyMechanismsWebhooksModel](ctx),
+					"webhooks": schema.ListNestedAttribute{
+						Optional: true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
 								"id": schema.StringAttribute{

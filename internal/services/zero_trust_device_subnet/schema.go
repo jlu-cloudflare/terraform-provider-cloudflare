@@ -21,7 +21,6 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustDeviceSubnetResource)(n
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
-		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Cloudflare One Networks Read",
