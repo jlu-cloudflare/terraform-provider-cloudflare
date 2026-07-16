@@ -28,14 +28,15 @@ type WorkerVersionModel struct {
 	UsageModel          types.String                                             `tfsdk:"usage_model" json:"usage_model,computed_optional"`
 	CompatibilityFlags  customfield.Set[types.String]                            `tfsdk:"compatibility_flags" json:"compatibility_flags,computed_optional"`
 	Annotations         customfield.NestedObject[WorkerVersionAnnotationsModel]  `tfsdk:"annotations" json:"annotations,computed_optional"`
-	Assets              customfield.NestedObject[WorkerVersionAssetsModel]       `tfsdk:"assets" json:"assets,computed_optional"`
-	Bindings            customfield.NestedObjectList[WorkerVersionBindingsModel] `tfsdk:"bindings" json:"bindings,computed_optional"`
+	Assets              customfield.NestedObject[WorkerVersionAssetsModel]       `tfsdk:"assets" json:"assets,optional"`
+	Bindings            customfield.NestedObjectList[WorkerVersionBindingsModel] `tfsdk:"bindings" json:"bindings,optional"`
 	CacheOptions        customfield.NestedObject[WorkerVersionCacheOptionsModel] `tfsdk:"cache_options" json:"cache_options,computed_optional"`
 	Limits              customfield.NestedObject[WorkerVersionLimitsModel]       `tfsdk:"limits" json:"limits,computed_optional"`
 	CreatedOn           timetypes.RFC3339                                        `tfsdk:"created_on" json:"created_on,computed" format:"date-time"`
 	MigrationTag        types.String                                             `tfsdk:"migration_tag" json:"migration_tag,computed"`
 	Number              types.Int64                                              `tfsdk:"number" json:"number,computed"`
 	Source              types.String                                             `tfsdk:"source" json:"source,computed"`
+	MainScriptBase64   types.String                                             `tfsdk:"main_script_base64" json:"main_script_base64,computed"`
 	StartupTimeMs       types.Int64                                              `tfsdk:"startup_time_ms" json:"startup_time_ms,computed"`
 	URLs                customfield.List[types.String]                           `tfsdk:"urls" json:"urls,computed"`
 }
@@ -94,9 +95,11 @@ type WorkerVersionMigrationsStepsTransferredClassesModel struct {
 }
 
 type WorkerVersionModulesModel struct {
-	ContentBase64 types.String `tfsdk:"content_base64" json:"content_base64,required"`
+	ContentBase64 types.String `tfsdk:"content_base64" json:"content_base64,optional"`
 	ContentType   types.String `tfsdk:"content_type" json:"content_type,required"`
 	Name          types.String `tfsdk:"name" json:"name,required"`
+	ContentFile   types.String `tfsdk:"content_file" json:"-,optional"`
+	ContentSHA256 types.String `tfsdk:"content_sha256" json:"-,computed"`
 }
 
 type WorkerVersionPackageDependenciesModel struct {
@@ -126,14 +129,16 @@ type WorkerVersionAnnotationsModel struct {
 }
 
 type WorkerVersionAssetsModel struct {
-	Config customfield.NestedObject[WorkerVersionAssetsConfigModel] `tfsdk:"config" json:"config,computed_optional"`
-	JWT    types.String                                             `tfsdk:"jwt" json:"jwt,optional"`
+	Config              customfield.NestedObject[WorkerVersionAssetsConfigModel] `tfsdk:"config" json:"config,optional"`
+	JWT                 types.String                                             `tfsdk:"jwt" json:"jwt,optional"`
+	Directory           types.String                                             `tfsdk:"directory" json:"-,optional"`
+	AssetManifestSHA256 types.String                                             `tfsdk:"asset_manifest_sha256" json:"-,computed"`
 }
 
 type WorkerVersionAssetsConfigModel struct {
-	HTMLHandling     types.String                   `tfsdk:"html_handling" json:"html_handling,computed_optional"`
-	NotFoundHandling types.String                   `tfsdk:"not_found_handling" json:"not_found_handling,computed_optional"`
-	RunWorkerFirst   customfield.List[types.String] `tfsdk:"run_worker_first" json:"run_worker_first,computed_optional"`
+	HTMLHandling     types.String                       `tfsdk:"html_handling" json:"html_handling,optional"`
+	NotFoundHandling types.String                       `tfsdk:"not_found_handling" json:"not_found_handling,optional"`
+	RunWorkerFirst   customfield.NormalizedDynamicValue `tfsdk:"run_worker_first" json:"run_worker_first,optional"`
 }
 
 type WorkerVersionBindingsModel struct {
@@ -142,7 +147,7 @@ type WorkerVersionBindingsModel struct {
 	InstanceName                types.String                        `tfsdk:"instance_name" json:"instance_name,optional"`
 	Namespace                   types.String                        `tfsdk:"namespace" json:"namespace,optional"`
 	Dataset                     types.String                        `tfsdk:"dataset" json:"dataset,optional"`
-	DatabaseID                  types.String                        `tfsdk:"database_id" json:"database_id,optional"`
+	DatabaseID                  types.String                        `tfsdk:"database_id" json:"database_id,computed_optional"`
 	ID                          types.String                        `tfsdk:"id" json:"id,optional"`
 	Part                        types.String                        `tfsdk:"part" json:"part,optional"`
 	Outbound                    *WorkerVersionBindingsOutboundModel `tfsdk:"outbound" json:"outbound,optional"`
@@ -152,7 +157,7 @@ type WorkerVersionBindingsModel struct {
 	NamespaceID                 types.String                        `tfsdk:"namespace_id" json:"namespace_id,computed_optional"`
 	ScriptName                  types.String                        `tfsdk:"script_name" json:"script_name,computed_optional"`
 	OldName                     types.String                        `tfsdk:"old_name" json:"old_name,optional"`
-	VersionID                   types.String                        `tfsdk:"version_id" json:"version_id,computed_optional"`
+	VersionID                   types.String                        `tfsdk:"version_id" json:"version_id,optional"`
 	Json                        jsontypes.Normalized                `tfsdk:"json" json:"json,optional"`
 	CertificateID               types.String                        `tfsdk:"certificate_id" json:"certificate_id,optional"`
 	Text                        types.String                        `tfsdk:"text" json:"text,optional"`

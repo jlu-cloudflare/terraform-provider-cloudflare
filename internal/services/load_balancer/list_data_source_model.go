@@ -17,19 +17,14 @@ type LoadBalancersResultListDataSourceEnvelope struct {
 }
 
 type LoadBalancersDataSourceModel struct {
-	AccountID types.String                                                     `tfsdk:"account_id" path:"account_id,optional"`
-	ZoneID    types.String                                                     `tfsdk:"zone_id" path:"zone_id,optional"`
-	MaxItems  types.Int64                                                      `tfsdk:"max_items"`
-	Result    customfield.NestedObjectList[LoadBalancersResultDataSourceModel] `tfsdk:"result"`
+	ZoneID   types.String                                                     `tfsdk:"zone_id" path:"zone_id,optional"`
+	MaxItems types.Int64                                                      `tfsdk:"max_items"`
+	Result   customfield.NestedObjectList[LoadBalancersResultDataSourceModel] `tfsdk:"result"`
 }
 
 func (m *LoadBalancersDataSourceModel) toListParams(_ context.Context) (params load_balancers.LoadBalancerListParams, diags diag.Diagnostics) {
-	params = load_balancers.LoadBalancerListParams{}
-
-	if !m.AccountID.IsNull() {
-		params.AccountID = cloudflare.F(m.AccountID.ValueString())
-	} else {
-		params.ZoneID = cloudflare.F(m.ZoneID.ValueString())
+	params = load_balancers.LoadBalancerListParams{
+		ZoneID: cloudflare.F(m.ZoneID.ValueString()),
 	}
 
 	return
@@ -38,7 +33,7 @@ func (m *LoadBalancersDataSourceModel) toListParams(_ context.Context) (params l
 type LoadBalancersResultDataSourceModel struct {
 	ID                        types.String                                                                    `tfsdk:"id" json:"id,computed"`
 	AdaptiveRouting           customfield.NestedObject[LoadBalancersAdaptiveRoutingDataSourceModel]           `tfsdk:"adaptive_routing" json:"adaptive_routing,computed"`
-	CountryPools              customfield.Map[customfield.List[types.String]]                                 `tfsdk:"country_pools" json:"country_pools,computed"`
+	CountryPools              customfield.Map[customfield.List[types.String]]                                 `tfsdk:"country_pools" json:"country_pools,computed_optional"`
 	CreatedOn                 types.String                                                                    `tfsdk:"created_on" json:"created_on,computed"`
 	DefaultPools              customfield.List[types.String]                                                  `tfsdk:"default_pools" json:"default_pools,computed"`
 	Description               types.String                                                                    `tfsdk:"description" json:"description,computed"`
@@ -48,11 +43,10 @@ type LoadBalancersResultDataSourceModel struct {
 	ModifiedOn                types.String                                                                    `tfsdk:"modified_on" json:"modified_on,computed"`
 	Name                      types.String                                                                    `tfsdk:"name" json:"name,computed"`
 	Networks                  customfield.List[types.String]                                                  `tfsdk:"networks" json:"networks,computed"`
-	PoolSets                  customfield.NestedObjectList[LoadBalancersPoolSetsDataSourceModel]              `tfsdk:"pool_sets" json:"pool_sets,computed"`
-	POPPools                  customfield.Map[customfield.List[types.String]]                                 `tfsdk:"pop_pools" json:"pop_pools,computed"`
+	POPPools                  customfield.Map[customfield.List[types.String]]                                 `tfsdk:"pop_pools" json:"pop_pools,computed_optional"`
 	Proxied                   types.Bool                                                                      `tfsdk:"proxied" json:"proxied,computed"`
 	RandomSteering            customfield.NestedObject[LoadBalancersRandomSteeringDataSourceModel]            `tfsdk:"random_steering" json:"random_steering,computed"`
-	RegionPools               customfield.Map[customfield.List[types.String]]                                 `tfsdk:"region_pools" json:"region_pools,computed"`
+	RegionPools               customfield.Map[customfield.List[types.String]]                                 `tfsdk:"region_pools" json:"region_pools,computed_optional"`
 	Rules                     customfield.NestedObjectList[LoadBalancersRulesDataSourceModel]                 `tfsdk:"rules" json:"rules,computed"`
 	SessionAffinity           types.String                                                                    `tfsdk:"session_affinity" json:"session_affinity,computed"`
 	SessionAffinityAttributes customfield.NestedObject[LoadBalancersSessionAffinityAttributesDataSourceModel] `tfsdk:"session_affinity_attributes" json:"session_affinity_attributes,computed"`
@@ -69,40 +63,6 @@ type LoadBalancersAdaptiveRoutingDataSourceModel struct {
 type LoadBalancersLocationStrategyDataSourceModel struct {
 	Mode      types.String `tfsdk:"mode" json:"mode,computed"`
 	PreferECS types.String `tfsdk:"prefer_ecs" json:"prefer_ecs,computed"`
-}
-
-type LoadBalancersPoolSetsDataSourceModel struct {
-	Disabled      types.Bool                                                                  `tfsdk:"disabled" json:"disabled,computed"`
-	FixedResponse customfield.NestedObject[LoadBalancersPoolSetsFixedResponseDataSourceModel] `tfsdk:"fixed_response" json:"fixed_response,computed"`
-	Match         customfield.NestedObject[LoadBalancersPoolSetsMatchDataSourceModel]         `tfsdk:"match" json:"match,computed"`
-	Name          types.String                                                                `tfsdk:"name" json:"name,computed"`
-	Overrides     customfield.NestedObject[LoadBalancersPoolSetsOverridesDataSourceModel]     `tfsdk:"overrides" json:"overrides,computed"`
-}
-
-type LoadBalancersPoolSetsFixedResponseDataSourceModel struct {
-	ContentType types.String `tfsdk:"content_type" json:"content_type,computed"`
-	Location    types.String `tfsdk:"location" json:"location,computed"`
-	MessageBody types.String `tfsdk:"message_body" json:"message_body,computed"`
-	StatusCode  types.Int64  `tfsdk:"status_code" json:"status_code,computed"`
-}
-
-type LoadBalancersPoolSetsMatchDataSourceModel struct {
-	Default  types.Bool                                                                  `tfsdk:"default" json:"default,computed"`
-	Topology customfield.NestedObject[LoadBalancersPoolSetsMatchTopologyDataSourceModel] `tfsdk:"topology" json:"topology,computed"`
-}
-
-type LoadBalancersPoolSetsMatchTopologyDataSourceModel struct {
-	Countries customfield.List[types.String] `tfsdk:"countries" json:"countries,computed"`
-	POPs      customfield.List[types.String] `tfsdk:"pops" json:"pops,computed"`
-	Regions   customfield.List[types.String] `tfsdk:"regions" json:"regions,computed"`
-}
-
-type LoadBalancersPoolSetsOverridesDataSourceModel struct {
-	FallbackPool      types.String                   `tfsdk:"fallback_pool" json:"fallback_pool,computed"`
-	PoolDefaultWeight types.Float64                  `tfsdk:"pool_default_weight" json:"pool_default_weight,computed"`
-	PoolWeights       customfield.Map[types.Float64] `tfsdk:"pool_weights" json:"pool_weights,computed"`
-	Pools             customfield.List[types.String] `tfsdk:"pools" json:"pools,computed"`
-	SteeringPolicy    types.String                   `tfsdk:"steering_policy" json:"steering_policy,computed"`
 }
 
 type LoadBalancersRandomSteeringDataSourceModel struct {
@@ -129,16 +89,13 @@ type LoadBalancersRulesFixedResponseDataSourceModel struct {
 
 type LoadBalancersRulesOverridesDataSourceModel struct {
 	AdaptiveRouting           customfield.NestedObject[LoadBalancersRulesOverridesAdaptiveRoutingDataSourceModel]           `tfsdk:"adaptive_routing" json:"adaptive_routing,computed"`
-	CountryPools              customfield.Map[customfield.List[types.String]]                                               `tfsdk:"country_pools" json:"country_pools,computed"`
+	CountryPools              customfield.Map[customfield.List[types.String]]                                               `tfsdk:"country_pools" json:"country_pools,computed_optional"`
 	DefaultPools              customfield.List[types.String]                                                                `tfsdk:"default_pools" json:"default_pools,computed"`
 	FallbackPool              types.String                                                                                  `tfsdk:"fallback_pool" json:"fallback_pool,computed"`
 	LocationStrategy          customfield.NestedObject[LoadBalancersRulesOverridesLocationStrategyDataSourceModel]          `tfsdk:"location_strategy" json:"location_strategy,computed"`
-	PoolDefaultWeight         types.Float64                                                                                 `tfsdk:"pool_default_weight" json:"pool_default_weight,computed"`
-	PoolWeights               customfield.Map[types.Float64]                                                                `tfsdk:"pool_weights" json:"pool_weights,computed"`
-	Pools                     customfield.List[types.String]                                                                `tfsdk:"pools" json:"pools,computed"`
-	POPPools                  customfield.Map[customfield.List[types.String]]                                               `tfsdk:"pop_pools" json:"pop_pools,computed"`
+	POPPools                  customfield.Map[customfield.List[types.String]]                                               `tfsdk:"pop_pools" json:"pop_pools,computed_optional"`
 	RandomSteering            customfield.NestedObject[LoadBalancersRulesOverridesRandomSteeringDataSourceModel]            `tfsdk:"random_steering" json:"random_steering,computed"`
-	RegionPools               customfield.Map[customfield.List[types.String]]                                               `tfsdk:"region_pools" json:"region_pools,computed"`
+	RegionPools               customfield.Map[customfield.List[types.String]]                                               `tfsdk:"region_pools" json:"region_pools,computed_optional"`
 	SessionAffinity           types.String                                                                                  `tfsdk:"session_affinity" json:"session_affinity,computed"`
 	SessionAffinityAttributes customfield.NestedObject[LoadBalancersRulesOverridesSessionAffinityAttributesDataSourceModel] `tfsdk:"session_affinity_attributes" json:"session_affinity_attributes,computed"`
 	SessionAffinityTTL        types.Float64                                                                                 `tfsdk:"session_affinity_ttl" json:"session_affinity_ttl,computed"`
@@ -161,7 +118,7 @@ type LoadBalancersRulesOverridesRandomSteeringDataSourceModel struct {
 }
 
 type LoadBalancersRulesOverridesSessionAffinityAttributesDataSourceModel struct {
-	DrainDuration        types.Float64                  `tfsdk:"drain_duration" json:"drain_duration,computed"`
+	DrainDuration        types.Float64                  `tfsdk:"drain_duration" json:"drain_duration,computed_optional"`
 	Headers              customfield.List[types.String] `tfsdk:"headers" json:"headers,computed"`
 	RequireAllHeaders    types.Bool                     `tfsdk:"require_all_headers" json:"require_all_headers,computed"`
 	Samesite             types.String                   `tfsdk:"samesite" json:"samesite,computed"`
@@ -170,7 +127,7 @@ type LoadBalancersRulesOverridesSessionAffinityAttributesDataSourceModel struct 
 }
 
 type LoadBalancersSessionAffinityAttributesDataSourceModel struct {
-	DrainDuration        types.Float64                  `tfsdk:"drain_duration" json:"drain_duration,computed"`
+	DrainDuration        types.Float64                  `tfsdk:"drain_duration" json:"drain_duration,computed_optional"`
 	Headers              customfield.List[types.String] `tfsdk:"headers" json:"headers,computed"`
 	RequireAllHeaders    types.Bool                     `tfsdk:"require_all_headers" json:"require_all_headers,computed"`
 	Samesite             types.String                   `tfsdk:"samesite" json:"samesite,computed"`

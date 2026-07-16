@@ -5,6 +5,7 @@ package dns_record
 import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -19,12 +20,12 @@ type DNSRecordModel struct {
 	Name              types.String                                     `tfsdk:"name" json:"name,required"`
 	Type              types.String                                     `tfsdk:"type" json:"type,required"`
 	Comment           types.String                                     `tfsdk:"comment" json:"comment,optional"`
-	Content           types.String                                     `tfsdk:"content" json:"content,optional"`
+	Content           types.String                                     `tfsdk:"content" json:"content,computed_optional"`
 	Priority          types.Float64                                    `tfsdk:"priority" json:"priority,optional"`
 	Data              *DNSRecordDataModel                              `tfsdk:"data" json:"data,optional"`
-	PrivateRouting    types.Bool                                       `tfsdk:"private_routing" json:"private_routing,computed_optional"`
+	PrivateRouting    types.Bool                                       `tfsdk:"private_routing" json:"private_routing,optional"`
 	Proxied           types.Bool                                       `tfsdk:"proxied" json:"proxied,computed_optional"`
-	TTL               types.Float64                                    `tfsdk:"ttl" json:"ttl,computed_optional"`
+	TTL               types.Float64                                    `tfsdk:"ttl" json:"ttl,required"`
 	Tags              customfield.Set[types.String]                    `tfsdk:"tags" json:"tags,computed_optional"`
 	Settings          customfield.NestedObject[DNSRecordSettingsModel] `tfsdk:"settings" json:"settings,computed_optional"`
 	CommentModifiedOn timetypes.RFC3339                                `tfsdk:"comment_modified_on" json:"comment_modified_on,computed" format:"date-time"`
@@ -32,7 +33,7 @@ type DNSRecordModel struct {
 	ModifiedOn        timetypes.RFC3339                                `tfsdk:"modified_on" json:"modified_on,computed" format:"date-time"`
 	Proxiable         types.Bool                                       `tfsdk:"proxiable" json:"proxiable,computed"`
 	TagsModifiedOn    timetypes.RFC3339                                `tfsdk:"tags_modified_on" json:"tags_modified_on,computed" format:"date-time"`
-	Meta              customfield.NestedObject[DNSRecordMetaModel]     `tfsdk:"meta" json:"meta,computed"`
+	Meta              jsontypes.Normalized                             `tfsdk:"meta" json:"meta,computed"`
 }
 
 func (m DNSRecordModel) MarshalJSON() (data []byte, err error) {
@@ -88,9 +89,3 @@ type DNSRecordSettingsModel struct {
 	FlattenCNAME types.Bool `tfsdk:"flatten_cname" json:"flatten_cname,computed_optional"`
 }
 
-type DNSRecordMetaModel struct {
-	DeadGlue             types.Bool                     `tfsdk:"dead_glue" json:"dead_glue,computed"`
-	IsGlue               types.Bool                     `tfsdk:"is_glue" json:"is_glue,computed"`
-	ShadowedBy           customfield.List[types.String] `tfsdk:"shadowed_by" json:"shadowed_by,computed"`
-	ShadowedRecordsCount types.Int64                    `tfsdk:"shadowed_records_count" json:"shadowed_records_count,computed"`
-}

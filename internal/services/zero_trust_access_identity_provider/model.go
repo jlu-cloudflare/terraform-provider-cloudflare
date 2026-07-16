@@ -23,7 +23,7 @@ type ZeroTrustAccessIdentityProviderModel struct {
 	Config               *ZeroTrustAccessIdentityProviderConfigModel                                      `tfsdk:"config" json:"config,required"`
 	SAMLCertificateSetID types.String                                                                     `tfsdk:"saml_certificate_set_id" json:"saml_certificate_set_id,optional"`
 	SCIMConfig           customfield.NestedObject[ZeroTrustAccessIdentityProviderSCIMConfigModel]         `tfsdk:"scim_config" json:"scim_config,computed_optional"`
-	ReadOnly             types.Bool                                                                       `tfsdk:"read_only" json:"read_only,computed"`
+	ReadOnly             types.Bool                                                                       `tfsdk:"read_only" json:"read_only,optional"`
 	SAMLCertificateSet   customfield.NestedObject[ZeroTrustAccessIdentityProviderSAMLCertificateSetModel] `tfsdk:"saml_certificate_set" json:"saml_certificate_set,computed"`
 }
 
@@ -62,7 +62,7 @@ type ZeroTrustAccessIdentityProviderConfigModel struct {
 	HeaderAttributes         *[]*ZeroTrustAccessIdentityProviderConfigHeaderAttributesModel `tfsdk:"header_attributes" json:"header_attributes,optional"`
 	IdPPublicCERTs           *[]types.String                                                `tfsdk:"idp_public_certs" json:"idp_public_certs,optional"`
 	IssuerURL                types.String                                                   `tfsdk:"issuer_url" json:"issuer_url,optional"`
-	SignRequest              types.Bool                                                     `tfsdk:"sign_request" json:"sign_request,computed_optional"`
+	SignRequest              types.Bool                                                     `tfsdk:"sign_request" json:"sign_request,optional"`
 	SSOTargetURL             types.String                                                   `tfsdk:"sso_target_url" json:"sso_target_url,optional"`
 	RedirectURL              types.String                                                   `tfsdk:"redirect_url" json:"redirect_url,computed"`
 	RestrictToAccountMembers types.Bool                                                     `tfsdk:"restrict_to_account_members" json:"restrict_to_account_members,computed_optional"`

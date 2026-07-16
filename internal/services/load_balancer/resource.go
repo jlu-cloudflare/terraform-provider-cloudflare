@@ -71,17 +71,11 @@ func (r *LoadBalancerResource) Create(ctx context.Context, req resource.CreateRe
 	}
 	res := new(http.Response)
 	env := LoadBalancerResultEnvelope{*data}
-	params := load_balancers.LoadBalancerNewParams{}
-
-	if !data.AccountID.IsNull() {
-		params.AccountID = cloudflare.F(data.AccountID.ValueString())
-	} else {
-		params.ZoneID = cloudflare.F(data.ZoneID.ValueString())
-	}
-
 	_, err = r.client.LoadBalancers.New(
 		ctx,
-		params,
+		load_balancers.LoadBalancerNewParams{
+			ZoneID: cloudflare.F(data.ZoneID.ValueString()),
+		},
 		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -125,18 +119,12 @@ func (r *LoadBalancerResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 	res := new(http.Response)
 	env := LoadBalancerResultEnvelope{*data}
-	params := load_balancers.LoadBalancerUpdateParams{}
-
-	if !data.AccountID.IsNull() {
-		params.AccountID = cloudflare.F(data.AccountID.ValueString())
-	} else {
-		params.ZoneID = cloudflare.F(data.ZoneID.ValueString())
-	}
-
 	_, err = r.client.LoadBalancers.Update(
 		ctx,
 		data.ID.ValueString(),
-		params,
+		load_balancers.LoadBalancerUpdateParams{
+			ZoneID: cloudflare.F(data.ZoneID.ValueString()),
+		},
 		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -165,20 +153,19 @@ func (r *LoadBalancerResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
+	// These attributes are not RESTful, and are conditionally modified
+	// on the server-side based on other attribute values.
+	steeringPolicy := data.SteeringPolicy.ValueString()
+	rules := data.Rules
+
 	res := new(http.Response)
 	env := LoadBalancerResultEnvelope{*data}
-	params := load_balancers.LoadBalancerGetParams{}
-
-	if !data.AccountID.IsNull() {
-		params.AccountID = cloudflare.F(data.AccountID.ValueString())
-	} else {
-		params.ZoneID = cloudflare.F(data.ZoneID.ValueString())
-	}
-
 	_, err := r.client.LoadBalancers.Get(
 		ctx,
 		data.ID.ValueString(),
-		params,
+		load_balancers.LoadBalancerGetParams{
+			ZoneID: cloudflare.F(data.ZoneID.ValueString()),
+		},
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -199,6 +186,13 @@ func (r *LoadBalancerResource) Read(ctx context.Context, req resource.ReadReques
 	}
 	data = &env.Result
 
+	// Set the non-RESTful attributes back to state value
+	responseSteeringPolicy := data.SteeringPolicy.ValueString()
+	if steeringPolicy == "" && (responseSteeringPolicy == "geo" || responseSteeringPolicy == "off") {
+		data.SteeringPolicy = types.StringValue("")
+	}
+	data.Rules = rules
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -211,18 +205,12 @@ func (r *LoadBalancerResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	params := load_balancers.LoadBalancerDeleteParams{}
-
-	if !data.AccountID.IsNull() {
-		params.AccountID = cloudflare.F(data.AccountID.ValueString())
-	} else {
-		params.ZoneID = cloudflare.F(data.ZoneID.ValueString())
-	}
-
 	_, err := r.client.LoadBalancers.Delete(
 		ctx,
 		data.ID.ValueString(),
-		params,
+		load_balancers.LoadBalancerDeleteParams{
+			ZoneID: cloudflare.F(data.ZoneID.ValueString()),
+		},
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
 	if err != nil {
@@ -235,32 +223,21 @@ func (r *LoadBalancerResource) Delete(ctx context.Context, req resource.DeleteRe
 
 func (r *LoadBalancerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	var data = new(LoadBalancerModel)
-	params := load_balancers.LoadBalancerGetParams{}
 
-	path_accounts_or_zones, path_account_id_or_zone_id := "", ""
+	path_zone_id := ""
 	path_load_balancer_id := ""
 	diags := importpath.ParseImportID(
 		req.ID,
-		"<{accounts|zones}/{account_id|zone_id}>/<load_balancer_id>",
-		&path_accounts_or_zones,
-		&path_account_id_or_zone_id,
+		"<zone_id>/<load_balancer_id>",
+		&path_zone_id,
 		&path_load_balancer_id,
 	)
 	resp.Diagnostics.Append(diags...)
-	switch path_accounts_or_zones {
-	case "accounts":
-		params.AccountID = cloudflare.F(path_account_id_or_zone_id)
-		data.AccountID = types.StringValue(path_account_id_or_zone_id)
-	case "zones":
-		params.ZoneID = cloudflare.F(path_account_id_or_zone_id)
-		data.ZoneID = types.StringValue(path_account_id_or_zone_id)
-	default:
-		resp.Diagnostics.AddError("invalid discriminator segment - <{accounts|zones}/{account_id|zone_id}>", "expected discriminator to be one of {accounts|zones}")
-	}
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	data.ZoneID = types.StringValue(path_zone_id)
 	data.ID = types.StringValue(path_load_balancer_id)
 
 	res := new(http.Response)
@@ -268,7 +245,9 @@ func (r *LoadBalancerResource) ImportState(ctx context.Context, req resource.Imp
 	_, err := r.client.LoadBalancers.Get(
 		ctx,
 		path_load_balancer_id,
-		params,
+		load_balancers.LoadBalancerGetParams{
+			ZoneID: cloudflare.F(path_zone_id),
+		},
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)

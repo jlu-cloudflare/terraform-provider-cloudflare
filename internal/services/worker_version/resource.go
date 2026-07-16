@@ -4,6 +4,7 @@ package worker_version
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,11 +12,15 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/option"
 	"github.com/cloudflare/cloudflare-go/v7/workers"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -64,6 +69,66 @@ func (r *WorkerVersionResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	var assets *WorkerVersionAssetsModel
+	if !data.Assets.IsNull() && !data.Assets.IsUnknown() {
+		planAssets, diags := data.Assets.Value(ctx)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if planAssets != nil {
+			assets = &WorkerVersionAssetsModel{
+				Config:              planAssets.Config,
+				JWT:                 planAssets.JWT,
+				Directory:           planAssets.Directory,
+				AssetManifestSHA256: planAssets.AssetManifestSHA256,
+			}
+		}
+	}
+	err := handleAssets(ctx, r.client, data)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to upload assets", err.Error())
+		return
+	}
+
+	var planModules *[]*WorkerVersionModulesModel
+	if data.Modules != nil {
+		planModules = data.Modules
+
+		copied := make([]*WorkerVersionModulesModel, len(*data.Modules))
+		for i, mod := range *data.Modules {
+			modCopy := *mod
+			copied[i] = &modCopy
+
+			if !mod.ContentFile.IsNull() {
+				content, err := readFile(mod.ContentFile.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Error reading file", err.Error())
+					return
+				}
+				copied[i].ContentBase64 = types.StringValue(base64.StdEncoding.EncodeToString([]byte(content)))
+			}
+		}
+		data.Modules = &copied
+	}
+
+	// Bindings as ordered in the plan. Terraform expects bindings written to
+	// state to appear in the same order as the plan.
+	planBindings := data.Bindings
+
+	var diags diag.Diagnostics
+	// Reorder plan bindings to be sorted in ascending order by name, which
+	// matches the order that the API returns them. This is important for
+	// apijson.UnmarshalComputed to work correctly. If the unmarshal target
+	// doesn't match the order that the API returns the bindings, the unmarshal
+	// operation will assign computed properties to the wrong bindings.
+	data.Bindings, diags = SortBindingsByName(ctx, planBindings)
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	dataBytes, err := data.MarshalJSON()
 	if err != nil {
 		resp.Diagnostics.AddError("failed to serialize http request", err.Error())
@@ -93,11 +158,94 @@ func (r *WorkerVersionResource) Create(ctx context.Context, req resource.CreateR
 	}
 	data = &env.Result
 
+	// The API returns database_id for D1 bindings but not for other types.
+	// Null out unknown database_id values to prevent "unknown after apply" errors.
+	if !data.Bindings.IsNull() && !data.Bindings.IsUnknown() {
+		var bindingsList []WorkerVersionBindingsModel
+		diags = data.Bindings.ElementsAs(ctx, &bindingsList, true)
+		resp.Diagnostics.Append(diags...)
+		for i := range bindingsList {
+			if bindingsList[i].DatabaseID.IsUnknown() {
+				bindingsList[i].DatabaseID = types.StringNull()
+			}
+		}
+		data.Bindings, diags = customfield.NewObjectList(ctx, bindingsList)
+		resp.Diagnostics.Append(diags...)
+	}
+
+	if data.Modules != nil && planModules != nil {
+		apiModuleNameMap := make(map[string]*WorkerVersionModulesModel)
+		for _, mod := range *data.Modules {
+			apiModuleNameMap[mod.Name.ValueString()] = mod
+		}
+
+		for _, planMod := range *planModules {
+			if apiMod, ok := apiModuleNameMap[planMod.Name.ValueString()]; ok {
+				contentBase64 := apiMod.ContentBase64.ValueString()
+				content, err := base64.StdEncoding.DecodeString(contentBase64)
+				if err != nil {
+					resp.Diagnostics.AddError("Create Error", err.Error())
+					return
+				}
+				contentSHA256, err := calculateStringHash(string(content))
+				if err != nil {
+					resp.Diagnostics.AddError("Create Error", err.Error())
+					return
+				}
+				planMod.ContentSHA256 = types.StringValue(contentSHA256)
+			}
+		}
+	}
+	data.Modules = planModules
+
+	if assets != nil && !data.Assets.IsNull() && !data.Assets.IsUnknown() {
+		refreshedAssets, d := data.Assets.Value(ctx)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		if refreshedAssets != nil {
+			assets.Config = refreshedAssets.Config
+		}
+	}
+
+	if assets != nil {
+		obj, d := customfield.NewObject(ctx, assets)
+		resp.Diagnostics.Append(d...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.Assets = obj
+	} else {
+		data.Assets = customfield.NullObject[WorkerVersionAssetsModel](ctx)
+	}
+	// Finally, reorder refreshed bindings to match the plan, now that computed
+	// properties have been filled in.
+	data.Bindings, diags = SortRefreshedBindingsToMatchPrevious(
+		ctx,
+		data.Bindings,
+		planBindings,
+	)
+	resp.Diagnostics.Append(diags...)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// This resource is immutable at the API level, but can be updated "in-place" if
+// the only changes are to provider-only attributes (namely the content_file
+// module attribute). Allowing "in-place" updates to these attributes makes it
+// possible to import this resource without destroying and re-creating it in the
+// process.
 func (r *WorkerVersionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Update is not supported for this resource
+	var plan *WorkerVersionModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	// Computed properties are marked as unknown in the plan and can't be copied
+	// to state. The modules attribute is the only attribute that can be updated
+	// in-place, so we only copy that attribute to state.
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("modules"), plan.Modules)...)
 }
 
 func (r *WorkerVersionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -109,6 +257,17 @@ func (r *WorkerVersionResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	assets := data.Assets
+	var stateModules *[]*WorkerVersionModulesModel
+	if data.Modules != nil {
+		copied := make([]*WorkerVersionModulesModel, len(*data.Modules))
+		for i, mod := range *data.Modules {
+			modCopy := *mod
+			copied[i] = &modCopy
+		}
+		stateModules = &copied
+	}
+
 	res := new(http.Response)
 	env := WorkerVersionResultEnvelope{*data}
 	_, err := r.client.Workers.Beta.Workers.Versions.Get(
@@ -117,6 +276,7 @@ func (r *WorkerVersionResource) Read(ctx context.Context, req resource.ReadReque
 		data.ID.ValueString(),
 		workers.BetaWorkerVersionGetParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
+			Include:   cloudflare.F(workers.BetaWorkerVersionGetParamsIncludeModules),
 		},
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -137,6 +297,73 @@ func (r *WorkerVersionResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 	data = &env.Result
+	data.Assets = assets
+
+	// The API returns database_id for D1 bindings but not for other types.
+	// Null out unknown database_id values to prevent drift.
+	if !data.Bindings.IsNull() && !data.Bindings.IsUnknown() {
+		var readBindingsList []WorkerVersionBindingsModel
+		readDiags := data.Bindings.ElementsAs(ctx, &readBindingsList, true)
+		resp.Diagnostics.Append(readDiags...)
+		for i := range readBindingsList {
+			if readBindingsList[i].DatabaseID.IsUnknown() {
+				readBindingsList[i].DatabaseID = types.StringNull()
+			}
+		}
+		data.Bindings, readDiags = customfield.NewObjectList(ctx, readBindingsList)
+		resp.Diagnostics.Append(readDiags...)
+	}
+
+	apiModuleNameMap := make(map[string]*WorkerVersionModulesModel)
+	if data.Modules != nil {
+		for _, mod := range *data.Modules {
+			apiModuleNameMap[mod.Name.ValueString()] = mod
+		}
+	}
+
+	if stateModules != nil {
+		for _, stateMod := range *stateModules {
+			if apiMod, ok := apiModuleNameMap[stateMod.Name.ValueString()]; ok {
+				contentBase64 := apiMod.ContentBase64.ValueString()
+				content, err := base64.StdEncoding.DecodeString(contentBase64)
+				if err != nil {
+					resp.Diagnostics.AddError("Refresh Error", err.Error())
+					return
+				}
+				contentSHA256, err := calculateStringHash(string(content))
+				if err != nil {
+					resp.Diagnostics.AddError("Refresh Error", err.Error())
+					return
+				}
+				stateMod.ContentSHA256 = types.StringValue(contentSHA256)
+
+				if stateMod.ContentBase64.IsNull() || stateMod.ContentBase64.IsUnknown() {
+					// content_file was used, keep it as is
+				} else {
+					// content_base64 was used, update it from API
+					stateMod.ContentBase64 = apiMod.ContentBase64
+				}
+			}
+		}
+		data.Modules = stateModules
+	}
+
+	// restore any secret_text `text` values from state since they aren't returned by the API
+	var state *WorkerVersionModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	var diags diag.Diagnostics
+	data.Bindings, diags = UpdateSecretTextsFromState(
+		ctx,
+		data.Bindings,
+		state.Bindings,
+	)
+	resp.Diagnostics.Append(diags...)
+	data.Bindings, diags = SortRefreshedBindingsToMatchPrevious(
+		ctx,
+		data.Bindings,
+		state.Bindings,
+	)
+	resp.Diagnostics.Append(diags...)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -175,6 +402,7 @@ func (r *WorkerVersionResource) ImportState(ctx context.Context, req resource.Im
 		path_version_id,
 		workers.BetaWorkerVersionGetParams{
 			AccountID: cloudflare.F(path_account_id),
+			Include:   cloudflare.F(workers.BetaWorkerVersionGetParamsIncludeModules),
 		},
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -190,6 +418,23 @@ func (r *WorkerVersionResource) ImportState(ctx context.Context, req resource.Im
 		return
 	}
 	data = &env.Result
+
+	if data.Modules != nil {
+		for _, mod := range *data.Modules {
+			contentBase64 := mod.ContentBase64.ValueString()
+			content, err := base64.StdEncoding.DecodeString(contentBase64)
+			if err != nil {
+				resp.Diagnostics.AddError("Import Error", err.Error())
+				return
+			}
+			contentSHA256, err := calculateStringHash(string(content))
+			if err != nil {
+				resp.Diagnostics.AddError("Import Error", err.Error())
+				return
+			}
+			mod.ContentSHA256 = types.StringValue(contentSHA256)
+		}
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

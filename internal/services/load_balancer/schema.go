@@ -26,10 +26,11 @@ var _ resource.ResourceWithConfigValidators = (*LoadBalancerResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
-				"Load Balancers Account Read",
-				"Load Balancers Account Write",
+				"Load Balancers Read",
+				"Load Balancers Write",
 			},
 		}.String(),
 		Attributes: map[string]schema.Attribute{
@@ -37,14 +38,8 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Computed:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseNonNullStateForUnknown()},
 			},
-			"account_id": schema.StringAttribute{
-				Description:   "The Account ID to use for this endpoint. Mutually exclusive with the Zone ID.",
-				Optional:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-			},
 			"zone_id": schema.StringAttribute{
-				Description:   "The Zone ID to use for this endpoint. Mutually exclusive with the Account ID.",
-				Optional:      true,
+				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
 			"fallback_pool": schema.StringAttribute{
@@ -63,18 +58,24 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"description": schema.StringAttribute{
 				Description: "Object description.",
 				Optional:    true,
+				Computed:    true,
 			},
 			"session_affinity_ttl": schema.Float64Attribute{
 				Description: "Time, in seconds, until a client's session expires after being created. Once the expiry time has been reached, subsequent requests may get sent to a different origin server. The accepted ranges per `session_affinity` policy are: - `\"cookie\"` / `\"ip_cookie\"`: The current default of 23 hours will be used unless explicitly set. The accepted range of values is between [1800, 604800]. - `\"header\"`: The current default of 1800 seconds will be used unless explicitly set. The accepted range of values is between [30, 3600]. Note: With session affinity by header, sessions only expire after they haven't been used for the number of seconds specified.",
+				Computed:    true,
 				Optional:    true,
 			},
 			"ttl": schema.Float64Attribute{
 				Description: "Time to live (TTL) of the DNS entry for the IP address returned by this load balancer. This only applies to gray-clouded (unproxied) load balancers.",
 				Optional:    true,
+				Computed:    true,
 			},
 			"country_pools": schema.MapAttribute{
 				Description: "A mapping of country codes to a list of pool IDs (ordered by their failover priority) for the given country. Any country not explicitly defined will fall back to using the corresponding region_pool mapping if it exists else to default_pools.",
+				Computed:    true,
 				Optional:    true,
+				CustomType:  customfield.NewMapType[customfield.List[types.String]](ctx),
+				// Default:     mapdefault.StaticValue(types.MapValueMust(types.ListType{ElemType: types.StringType}, map[string]attr.Value{})), // TODO: clean up schemas to remove this...or fix the service response
 				ElementType: types.ListType{
 					ElemType: types.StringType,
 				},
@@ -82,18 +83,26 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"networks": schema.ListAttribute{
 				Description: "List of networks where Load Balancer or Pool is enabled.",
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.StringType,
+				CustomType:  customfield.NewListType[types.String](ctx),
 			},
 			"pop_pools": schema.MapAttribute{
 				Description: "Enterprise only: A mapping of Cloudflare PoP identifiers to a list of pool IDs (ordered by their failover priority) for the PoP (datacenter). Any PoPs not explicitly defined will fall back to using the corresponding country_pool, then region_pool mapping if it exists else to default_pools.",
+				Computed:    true,
 				Optional:    true,
+				CustomType:  customfield.NewMapType[customfield.List[types.String]](ctx),
+				// Default:     mapdefault.StaticValue(types.MapValueMust(types.ListType{ElemType: types.StringType}, map[string]attr.Value{})), // TODO: clean up schemas to remove this...or fix the service response
 				ElementType: types.ListType{
 					ElemType: types.StringType,
 				},
 			},
 			"region_pools": schema.MapAttribute{
 				Description: "A mapping of region codes to a list of pool IDs (ordered by their failover priority) for the given region. Any regions not explicitly defined will fall back to using default_pools.",
+				Computed:    true,
 				Optional:    true,
+				CustomType:  customfield.NewMapType[customfield.List[types.String]](ctx),
+				// Default:     mapdefault.StaticValue(types.MapValueMust(types.ListType{ElemType: types.StringType}, map[string]attr.Value{})), // TODO: clean up schemas to remove this...or fix the service response
 				ElementType: types.ListType{
 					ElemType: types.StringType,
 				},
@@ -227,7 +236,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							Default:     booldefault.StaticBool(false),
 						},
 						"fixed_response": schema.SingleNestedAttribute{
-							Description: "A collection of fields used to directly respond to the client instead of routing to a pool. When supplied on a rule, that rule stops further rule evaluation.",
+							Description: "A collection of fields used to directly respond to the eyeball instead of routing to a pool. If a fixed_response is supplied the rule will be marked as terminates.",
 							Optional:    true,
 							Attributes: map[string]schema.Attribute{
 								"content_type": schema.StringAttribute{
@@ -253,26 +262,31 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							Optional:    true,
 						},
 						"overrides": schema.SingleNestedAttribute{
-							Description: "A collection of overrides to apply when this rule's condition (or a pool set's `match`) is true. All fields are optional.",
+							Description: "A collection of overrides to apply to the load balancer when this rule's condition is true. All fields are optional.",
 							Computed:    true,
 							Optional:    true,
 							CustomType:  customfield.NewNestedObjectType[LoadBalancerRulesOverridesModel](ctx),
 							Attributes: map[string]schema.Attribute{
 								"adaptive_routing": schema.SingleNestedAttribute{
 									Description: "Controls features that modify the routing of requests to pools and origins in response to dynamic conditions, such as during the interval between active health monitoring requests. For example, zero-downtime failover occurs immediately when an origin becomes unavailable due to HTTP 521, 522, or 523 response codes. If there is another healthy origin in the same pool, the request is retried once against this alternate origin.",
+									Computed:    true,
 									Optional:    true,
+									CustomType:  customfield.NewNestedObjectType[LoadBalancerRulesOverridesAdaptiveRoutingModel](ctx),
 									Attributes: map[string]schema.Attribute{
 										"failover_across_pools": schema.BoolAttribute{
 											Description: "Extends zero-downtime failover of requests to healthy origins from alternate pools, when no healthy alternate exists in the same pool, according to the failover order defined by traffic and origin steering. When set false (the default) zero-downtime failover will only occur between origins within the same pool. See `session_affinity_attributes` for control over when sessions are broken or reassigned.",
 											Computed:    true,
 											Optional:    true,
-											Default:     booldefault.StaticBool(false),
+											// Default:     booldefault.StaticBool(false), // TODO: clean up schemas to remove this...or fix the service response
 										},
 									},
 								},
 								"country_pools": schema.MapAttribute{
 									Description: "A mapping of country codes to a list of pool IDs (ordered by their failover priority) for the given country. Any country not explicitly defined will fall back to using the corresponding region_pool mapping if it exists else to default_pools.",
+									Computed:    true,
 									Optional:    true,
+									// Default:     mapdefault.StaticValue(types.MapValueMust(types.ListType{ElemType: types.StringType}, map[string]attr.Value{})), // TODO: clean up schemas to remove this...or fix the service response
+									CustomType: customfield.NewMapType[customfield.List[types.String]](ctx),
 									ElementType: types.ListType{
 										ElemType: types.StringType,
 									},
@@ -288,7 +302,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 								"location_strategy": schema.SingleNestedAttribute{
 									Description: "Controls location-based steering for non-proxied requests. See `steering_policy` to learn how steering is affected.",
+									Computed:    true,
 									Optional:    true,
+									CustomType:  customfield.NewNestedObjectType[LoadBalancerRulesOverridesLocationStrategyModel](ctx),
 									Attributes: map[string]schema.Attribute{
 										"mode": schema.StringAttribute{
 											Description: "Determines the authoritative location when ECS is not preferred, does not exist in the request, or its GeoIP lookup is unsuccessful.\n- `\"pop\"`: Use the Cloudflare PoP location.\n- `\"resolver_ip\"`: Use the DNS resolver GeoIP location. If the GeoIP lookup is unsuccessful, use the Cloudflare PoP location.\nAvailable values: \"pop\", \"resolver_ip\".",
@@ -297,7 +313,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 											Validators: []validator.String{
 												stringvalidator.OneOfCaseInsensitive("pop", "resolver_ip"),
 											},
-											Default: stringdefault.StaticString("pop"),
+											// Default: stringdefault.StaticString("pop"), // TODO: clean up schemas to remove this...or fix the service response
 										},
 										"prefer_ecs": schema.StringAttribute{
 											Description: "Whether the EDNS Client Subnet (ECS) GeoIP should be preferred as the authoritative location.\n- `\"always\"`: Always prefer ECS.\n- `\"never\"`: Never prefer ECS.\n- `\"proximity\"`: Prefer ECS only when `steering_policy=\"proximity\"`.\n- `\"geo\"`: Prefer ECS only when `steering_policy=\"geo\"`.\nAvailable values: \"always\", \"never\", \"proximity\", \"geo\".",
@@ -311,42 +327,24 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 													"geo",
 												),
 											},
-											Default: stringdefault.StaticString("proximity"),
+											// Default: stringdefault.StaticString("proximity"), // TODO: clean up schemas to remove this...or fix the service response
 										},
 									},
 								},
-								"pool_default_weight": schema.Float64Attribute{
-									Description: "The default weight for pools not listed in `pool_weights`. The declarative alternative to `random_steering.default_weight`; mutually exclusive with `random_steering`.",
-									Computed:    true,
-									Optional:    true,
-									Validators: []validator.Float64{
-										float64validator.Between(0, 1),
-									},
-								},
-								"pool_weights": schema.MapAttribute{
-									Description: "A mapping of pool IDs to custom weights, relative to the other pools. The declarative alternative to `random_steering.pool_weights`; mutually exclusive with `random_steering`.",
-									Computed:    true,
-									Optional:    true,
-									CustomType:  customfield.NewMapType[types.Float64](ctx),
-									ElementType: types.Float64Type,
-								},
-								"pools": schema.ListAttribute{
-									Description: "A flat, ordered list of pool IDs to route the matched audience to. Replaces the resolved topology with exactly these pools. Mutually exclusive with `fixed_response`.",
-									Computed:    true,
-									Optional:    true,
-									CustomType:  customfield.NewListType[types.String](ctx),
-									ElementType: types.StringType,
-								},
 								"pop_pools": schema.MapAttribute{
 									Description: "Enterprise only: A mapping of Cloudflare PoP identifiers to a list of pool IDs (ordered by their failover priority) for the PoP (datacenter). Any PoPs not explicitly defined will fall back to using the corresponding country_pool, then region_pool mapping if it exists else to default_pools.",
+									Computed:    true,
 									Optional:    true,
+									CustomType:  customfield.NewMapType[customfield.List[types.String]](ctx),
 									ElementType: types.ListType{
 										ElemType: types.StringType,
 									},
 								},
 								"random_steering": schema.SingleNestedAttribute{
 									Description: "Configures pool weights.\n- `steering_policy=\"random\"`: A random pool is selected with probability proportional to pool weights.\n- `steering_policy=\"least_outstanding_requests\"`: Use pool weights to scale each pool's outstanding requests.\n- `steering_policy=\"least_connections\"`: Use pool weights to scale each pool's open connections.",
+									Computed:    true,
 									Optional:    true,
+									CustomType:  customfield.NewNestedObjectType[LoadBalancerRulesOverridesRandomSteeringModel](ctx),
 									Attributes: map[string]schema.Attribute{
 										"default_weight": schema.Float64Attribute{
 											Description: "The default weight for pools in the load balancer that are not specified in the pool_weights map.",
@@ -355,7 +353,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 											Validators: []validator.Float64{
 												float64validator.Between(0, 1),
 											},
-											Default: float64default.StaticFloat64(1),
+											// Default: float64default.StaticFloat64(1), // TODO: clean up schemas to remove this...or fix the service response
 										},
 										"pool_weights": schema.MapAttribute{
 											Description: "A mapping of pool IDs to custom weights. The weight is relative to other pools in the load balancer.",
@@ -366,7 +364,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 								"region_pools": schema.MapAttribute{
 									Description: "A mapping of region codes to a list of pool IDs (ordered by their failover priority) for the given region. Any regions not explicitly defined will fall back to using default_pools.",
+									Computed:    true,
 									Optional:    true,
+									CustomType:  customfield.NewMapType[customfield.List[types.String]](ctx),
 									ElementType: types.ListType{
 										ElemType: types.StringType,
 									},
@@ -383,14 +383,17 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 											"header",
 										),
 									},
-									Default: stringdefault.StaticString("none"),
+									// Default: stringdefault.StaticString("none"), // TODO: clean up schemas to remove this...or fix the service response
 								},
 								"session_affinity_attributes": schema.SingleNestedAttribute{
 									Description: "Configures attributes for session affinity.",
+									Computed:    true,
 									Optional:    true,
+									CustomType:  customfield.NewNestedObjectType[LoadBalancerRulesOverridesSessionAffinityAttributesModel](ctx),
 									Attributes: map[string]schema.Attribute{
 										"drain_duration": schema.Float64Attribute{
 											Description: "Configures the drain duration in seconds. This field is only used when session affinity is enabled on the load balancer.",
+											Computed:    true,
 											Optional:    true,
 										},
 										"headers": schema.ListAttribute{
@@ -448,6 +451,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 								"session_affinity_ttl": schema.Float64Attribute{
 									Description: "Time, in seconds, until a client's session expires after being created. Once the expiry time has been reached, subsequent requests may get sent to a different origin server. The accepted ranges per `session_affinity` policy are: - `\"cookie\"` / `\"ip_cookie\"`: The current default of 23 hours will be used unless explicitly set. The accepted range of values is between [1800, 604800]. - `\"header\"`: The current default of 1800 seconds will be used unless explicitly set. The accepted range of values is between [30, 3600]. Note: With session affinity by header, sessions only expire after they haven't been used for the number of seconds specified.",
+									Computed:    true,
 									Optional:    true,
 								},
 								"steering_policy": schema.StringAttribute{
@@ -466,11 +470,12 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 											"",
 										),
 									},
-									Default: stringdefault.StaticString(""),
+									// Default: stringdefault.StaticString(""), // TODO: clean up schemas to remove this...or fix the service response
 								},
 								"ttl": schema.Float64Attribute{
 									Description: "Time to live (TTL) of the DNS entry for the IP address returned by this load balancer. This only applies to gray-clouded (unproxied) load balancers.",
 									Optional:    true,
+									Computed:    true,
 								},
 							},
 						},
@@ -498,6 +503,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Attributes: map[string]schema.Attribute{
 					"drain_duration": schema.Float64Attribute{
 						Description: "Configures the drain duration in seconds. This field is only used when session affinity is enabled on the load balancer.",
+						Computed:    true,
 						Optional:    true,
 					},
 					"headers": schema.ListAttribute{
@@ -509,7 +515,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						Description: "When header `session_affinity` is enabled, this option can be used to specify how HTTP headers on load balancing requests will be used. The supported values are: - `\"true\"`: Load balancing requests must contain *all* of the HTTP headers specified by the `headers` session affinity attribute, otherwise sessions aren't created. - `\"false\"`: Load balancing requests must contain *at least one* of the HTTP headers specified by the `headers` session affinity attribute, otherwise sessions aren't created.",
 						Computed:    true,
 						Optional:    true,
-						Default:     booldefault.StaticBool(false),
+						// Default:     booldefault.StaticBool(false), // TODO: clean up schemas to remove this...or fix the service response
 					},
 					"samesite": schema.StringAttribute{
 						Description: "Configures the SameSite attribute on session affinity cookie. Value \"Auto\" will be translated to \"Lax\" or \"None\" depending if Always Use HTTPS is enabled. Note: when using value \"None\", the secure attribute can not be set to \"Never\".\nAvailable values: \"Auto\", \"Lax\", \"None\", \"Strict\".",
@@ -523,7 +529,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								"Strict",
 							),
 						},
-						Default: stringdefault.StaticString("Auto"),
+						// Default: stringdefault.StaticString("Auto"), // TODO: clean up schemas to remove this...or fix the service response
 					},
 					"secure": schema.StringAttribute{
 						Description: "Configures the Secure attribute on session affinity cookie. Value \"Always\" indicates the Secure attribute will be set in the Set-Cookie header, \"Never\" indicates the Secure attribute will not be set, and \"Auto\" will set the Secure attribute depending if Always Use HTTPS is enabled.\nAvailable values: \"Auto\", \"Always\", \"Never\".",
@@ -536,7 +542,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								"Never",
 							),
 						},
-						Default: stringdefault.StaticString("Auto"),
+						// Default: stringdefault.StaticString("Auto"), // TODO: clean up schemas to remove this...or fix the service response
 					},
 					"zero_downtime_failover": schema.StringAttribute{
 						Description: "Configures the zero-downtime failover between origins within a pool when session affinity is enabled. This feature is currently incompatible with Argo, Tiered Cache, and Bandwidth Alliance. The supported values are: - `\"none\"`: No failover takes place for sessions pinned to the origin (default). - `\"temporary\"`: Traffic will be sent to another other healthy origin until the originally pinned origin is available; note that this can potentially result in heavy origin flapping. - `\"sticky\"`: The session affinity cookie is updated and subsequent requests are sent to the new origin. Note: Zero-downtime failover with sticky sessions is currently not supported for session affinity by header.\nAvailable values: \"none\", \"temporary\", \"sticky\".",
@@ -549,7 +555,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								"sticky",
 							),
 						},
-						Default: stringdefault.StaticString("none"),
+						// Default: stringdefault.StaticString("none"), // TODO: clean up schemas to remove this...or fix the service response
 					},
 				},
 			},
@@ -561,131 +567,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"zone_name": schema.StringAttribute{
 				Computed: true,
-			},
-			"pool_sets": schema.ListNestedAttribute{
-				Description: "An optional list of pool sets, evaluated in array order with first match wins. Pool sets are independent from the standard steering fields (`region_pools` / `country_pools` / `pop_pools` / `default_pools` / `steering_policy` / `random_steering` / `fallback_pool` / `rules`). On a PATCH, an empty array (`pool_sets: []`) clears all pool sets, while omitting the field leaves existing pool sets unchanged.",
-				Computed:    true,
-				CustomType:  customfield.NewNestedObjectListType[LoadBalancerPoolSetsModel](ctx),
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"disabled": schema.BoolAttribute{
-							Description: "Disable this specific pool set. It will no longer be evaluated.",
-							Computed:    true,
-							Default:     booldefault.StaticBool(false),
-						},
-						"fixed_response": schema.SingleNestedAttribute{
-							Description: "A collection of fields used to directly respond to the client instead of routing to a pool. When supplied on a rule, that rule stops further rule evaluation.",
-							Computed:    true,
-							CustomType:  customfield.NewNestedObjectType[LoadBalancerPoolSetsFixedResponseModel](ctx),
-							Attributes: map[string]schema.Attribute{
-								"content_type": schema.StringAttribute{
-									Description: "The http 'Content-Type' header to include in the response.",
-									Computed:    true,
-								},
-								"location": schema.StringAttribute{
-									Description: "The http 'Location' header to include in the response.",
-									Computed:    true,
-								},
-								"message_body": schema.StringAttribute{
-									Description: "Text to include as the http body.",
-									Computed:    true,
-								},
-								"status_code": schema.Int64Attribute{
-									Description: "The http status code to respond with.",
-									Computed:    true,
-								},
-							},
-						},
-						"match": schema.SingleNestedAttribute{
-							Description: "Determines which requests a pool set applies to. Set `topology` to match by location or `default: true` to match all requests; the two are mutually exclusive. A pool set with no `match` matches all requests.",
-							Computed:    true,
-							CustomType:  customfield.NewNestedObjectType[LoadBalancerPoolSetsMatchModel](ctx),
-							Attributes: map[string]schema.Attribute{
-								"default": schema.BoolAttribute{
-									Description: "When true, matches every request. Cannot be combined with `topology`.",
-									Computed:    true,
-									Default:     booldefault.StaticBool(false),
-								},
-								"topology": schema.SingleNestedAttribute{
-									Description: "Matches requests by location. Set any combination of `pops`, `countries`, and `regions` (at least one is required); a request matches when its value appears in any populated list (e.g. `regions: [\"WNAM\"]` with `countries: [\"US\"]` matches a request in either WNAM or the US).",
-									Computed:    true,
-									CustomType:  customfield.NewNestedObjectType[LoadBalancerPoolSetsMatchTopologyModel](ctx),
-									Attributes: map[string]schema.Attribute{
-										"countries": schema.ListAttribute{
-											Description: "A list of ISO 3166-1 alpha-2 country codes. Matches when the request's country is in this list.",
-											Computed:    true,
-											CustomType:  customfield.NewListType[types.String](ctx),
-											ElementType: types.StringType,
-										},
-										"pops": schema.ListAttribute{
-											Description: "A list of Cloudflare PoP codes. Matches when the request's PoP is in this list.",
-											Computed:    true,
-											CustomType:  customfield.NewListType[types.String](ctx),
-											ElementType: types.StringType,
-										},
-										"regions": schema.ListAttribute{
-											Description: "A list of Cloudflare region codes (e.g. `WNAM`, `ENAM`, `WEU`). Matches when the request's region is in this list.",
-											Computed:    true,
-											CustomType:  customfield.NewListType[types.String](ctx),
-											ElementType: types.StringType,
-										},
-									},
-								},
-							},
-						},
-						"name": schema.StringAttribute{
-							Description: "A human-readable name for this pool set.",
-							Computed:    true,
-						},
-						"overrides": schema.SingleNestedAttribute{
-							Description: "The behavior a pool set applies when its `match` succeeds. A strict subset of a rule's `overrides`: a pool set replaces the topology wholesale with a flat pool list (`pools`), so only the declarative pool-routing fields plus `fallback_pool` and `steering_policy` are settable. All fields are optional.",
-							Computed:    true,
-							CustomType:  customfield.NewNestedObjectType[LoadBalancerPoolSetsOverridesModel](ctx),
-							Attributes: map[string]schema.Attribute{
-								"fallback_pool": schema.StringAttribute{
-									Description: "The pool ID to use when all other pools are detected as unhealthy.",
-									Computed:    true,
-								},
-								"pool_default_weight": schema.Float64Attribute{
-									Description: "The default weight for pools not listed in `pool_weights`. The declarative alternative to `random_steering.default_weight`; mutually exclusive with `random_steering`.",
-									Computed:    true,
-									Validators: []validator.Float64{
-										float64validator.Between(0, 1),
-									},
-								},
-								"pool_weights": schema.MapAttribute{
-									Description: "A mapping of pool IDs to custom weights, relative to the other pools. The declarative alternative to `random_steering.pool_weights`; mutually exclusive with `random_steering`.",
-									Computed:    true,
-									CustomType:  customfield.NewMapType[types.Float64](ctx),
-									ElementType: types.Float64Type,
-								},
-								"pools": schema.ListAttribute{
-									Description: "A flat, ordered list of pool IDs to route the matched audience to. Replaces the resolved topology with exactly these pools. Mutually exclusive with `fixed_response`.",
-									Computed:    true,
-									CustomType:  customfield.NewListType[types.String](ctx),
-									ElementType: types.StringType,
-								},
-								"steering_policy": schema.StringAttribute{
-									Description: "Steering Policy for this load balancer.\n- `\"off\"`: Use `default_pools`.\n- `\"geo\"`: Use `region_pools`/`country_pools`/`pop_pools`. For non-proxied requests, the country for `country_pools` is determined by `location_strategy`.\n- `\"random\"`: Select a pool randomly.\n- `\"dynamic_latency\"`: Use round trip time to select the closest pool in default_pools (requires pool health checks).\n- `\"proximity\"`: Use the pools' latitude and longitude to select the closest pool using the Cloudflare PoP location for proxied requests or the location determined by `location_strategy` for non-proxied requests.\n- `\"least_outstanding_requests\"`: Select a pool by taking into consideration `random_steering` weights, as well as each pool's number of outstanding requests. Pools with more pending requests are weighted proportionately less relative to others.\n- `\"least_connections\"`: Select a pool by taking into consideration `random_steering` weights, as well as each pool's number of open connections. Pools with more open connections are weighted proportionately less relative to others. Supported for HTTP/1 and HTTP/2 connections.\n- `\"\"`: Will map to `\"geo\"` if you use `region_pools`/`country_pools`/`pop_pools` otherwise `\"off\"`.\nAvailable values: \"off\", \"geo\", \"random\", \"dynamic_latency\", \"proximity\", \"least_outstanding_requests\", \"least_connections\", \"\".",
-									Computed:    true,
-									Validators: []validator.String{
-										stringvalidator.OneOfCaseInsensitive(
-											"off",
-											"geo",
-											"random",
-											"dynamic_latency",
-											"proximity",
-											"least_outstanding_requests",
-											"least_connections",
-											"",
-										),
-									},
-									Default: stringdefault.StaticString(""),
-								},
-							},
-						},
-					},
-				},
 			},
 		},
 	}
