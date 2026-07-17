@@ -102,6 +102,16 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Computed:    true,
 				CustomType:  timetypes.RFC3339Type{},
 			},
+			"modified_on": schema.StringAttribute{
+				Description: "When the widget was modified.",
+				Computed:    true,
+				CustomType:  timetypes.RFC3339Type{},
+			},
+			"secret": schema.StringAttribute{
+				Description: "Secret key for this widget.",
+				Computed:    true,
+				Sensitive:   true,
+			},
 			"deployed_via": schema.StringAttribute{
 				Description: "Origin that created this widget, recorded at creation time and\nimmutable afterward. Server-derived from the create request; not\nclient-settable. Omitted from the response for widgets created\nbefore this field existed.\nAvailable values: \"wrangler\", \"dashboard\", \"spin\", \"api\", \"unknown\".",
 				Computed:    true,
@@ -127,16 +137,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						"unknown",
 					),
 				},
-			},
-			"modified_on": schema.StringAttribute{
-				Description: "When the widget was modified.",
-				Computed:    true,
-				CustomType:  timetypes.RFC3339Type{},
-			},
-			"secret": schema.StringAttribute{
-				Description: "Secret key for this widget.",
-				Computed:    true,
-				Sensitive:   true,
 			},
 		},
 	}

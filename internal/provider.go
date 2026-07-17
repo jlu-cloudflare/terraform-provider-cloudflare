@@ -211,8 +211,8 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/workers_script_subdomain"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/workflow"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_ai_controls_mcp_portal"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_application"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_ai_controls_mcp_server"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_application"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_custom_page"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_group"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_identity_provider"
@@ -287,6 +287,7 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zone_lockdown"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zone_setting"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zone_subscription"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -381,6 +382,24 @@ func (p *CloudflareProvider) Configure(ctx context.Context, req provider.Configu
 		opts = append(opts, option.WithUserServiceKey(data.UserServiceKey.ValueString()))
 	} else if o, ok := os.LookupEnv("CLOUDFLARE_API_USER_SERVICE_KEY"); ok {
 		opts = append(opts, option.WithUserServiceKey(o))
+	}
+
+	var pluginVersion *string
+	framework := "terraform-plugin-framework"
+	userAgentParams := utils.UserAgentBuilderParams{
+		ProviderVersion: &p.version,
+		PluginType:      &framework,
+		PluginVersion:   pluginVersion,
+	}
+
+	userAgentParams.TerraformVersion = &req.TerraformVersion
+
+	opts = append(opts, option.WithHeader("user-agent", userAgentParams.String()))
+	opts = append(opts, option.WithHeader("x-stainless-package-version", p.version))
+	opts = append(opts, option.WithHeader("x-stainless-runtime", framework))
+	opts = append(opts, option.WithHeader("x-stainless-lang", "Terraform"))
+	if pluginVersion != nil {
+		opts = append(opts, option.WithHeader("x-stainless-runtime-version", *pluginVersion))
 	}
 
 	client := cloudflare.NewClient(
@@ -956,6 +975,8 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		zero_trust_dlp_dataset.NewZeroTrustDLPDatasetsDataSource,
 		zero_trust_dlp_settings.NewZeroTrustDLPSettingsDataSource,
 		zero_trust_dlp_custom_profile.NewZeroTrustDLPCustomProfileDataSource,
+		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicDataSource,
+		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicsDataSource,
 		zero_trust_dlp_predefined_profile.NewZeroTrustDLPPredefinedProfileDataSource,
 		zero_trust_dlp_entry.NewZeroTrustDLPEntryDataSource,
 		zero_trust_dlp_entry.NewZeroTrustDLPEntriesDataSource,
