@@ -12,9 +12,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -24,6 +26,7 @@ var _ resource.ResourceWithConfigValidators = (*PagesProjectResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Pages Read",
@@ -52,31 +55,39 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"build_config": schema.SingleNestedAttribute{
 				Description: "Configs for the project build process.",
+				Computed:    true,
 				Optional:    true,
+				CustomType:  customfield.NewNestedObjectType[PagesProjectBuildConfigModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"build_caching": schema.BoolAttribute{
 						Description: "Enable build caching for the project.",
+						Computed:    true,
 						Optional:    true,
 					},
 					"build_command": schema.StringAttribute{
 						Description: "Command used to build project.",
+						Computed:    true,
 						Optional:    true,
 					},
 					"destination_dir": schema.StringAttribute{
 						Description: "Output directory of the build.",
+						Computed:    true,
 						Optional:    true,
 					},
 					"root_dir": schema.StringAttribute{
 						Description: "Directory to run the command.",
+						Computed:    true,
 						Optional:    true,
 					},
 					"web_analytics_tag": schema.StringAttribute{
 						Description: "The classifying tag for analytics.",
+						Computed:    true,
 						Optional:    true,
 					},
 					"web_analytics_token": schema.StringAttribute{
 						Description: "The auth token for analytics.",
 						Optional:    true,
+						Computed:    true,
 						Sensitive:   true,
 					},
 				},
@@ -90,43 +101,56 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						Attributes: map[string]schema.Attribute{
 							"deployments_enabled": schema.BoolAttribute{
 								Description:        "Whether to enable automatic deployments when pushing to the source repository.\nWhen disabled, no deployments (production or preview) will be triggered automatically.",
+								Computed:           true,
 								Optional:           true,
 								DeprecationMessage: "Use `production_deployments_enabled` and `preview_deployment_setting` for more granular control.",
 							},
 							"owner": schema.StringAttribute{
 								Description: "The owner of the repository.",
+								Computed:    true,
 								Optional:    true,
 							},
 							"owner_id": schema.StringAttribute{
 								Description: "The owner ID of the repository.",
+								Computed:    true,
 								Optional:    true,
 							},
 							"path_excludes": schema.ListAttribute{
 								Description: "A list of paths that should be excluded from triggering a preview deployment. Wildcard syntax (`*`) is supported.",
+								Computed:    true,
 								Optional:    true,
+								CustomType:  customfield.NewListType[types.String](ctx),
 								ElementType: types.StringType,
 							},
 							"path_includes": schema.ListAttribute{
 								Description: "A list of paths that should be watched to trigger a preview deployment. Wildcard syntax (`*`) is supported.",
+								Computed:    true,
 								Optional:    true,
+								CustomType:  customfield.NewListType[types.String](ctx),
 								ElementType: types.StringType,
 							},
 							"pr_comments_enabled": schema.BoolAttribute{
 								Description: "Whether to enable PR comments.",
+								Computed:    true,
 								Optional:    true,
 							},
 							"preview_branch_excludes": schema.ListAttribute{
 								Description: "A list of branches that should not trigger a preview deployment. Wildcard syntax (`*`) is supported. Must be used with `preview_deployment_setting` set to `custom`.",
+								Computed:    true,
 								Optional:    true,
+								CustomType:  customfield.NewListType[types.String](ctx),
 								ElementType: types.StringType,
 							},
 							"preview_branch_includes": schema.ListAttribute{
 								Description: "A list of branches that should trigger a preview deployment. Wildcard syntax (`*`) is supported. Must be used with `preview_deployment_setting` set to `custom`.",
+								Computed:    true,
 								Optional:    true,
+								CustomType:  customfield.NewListType[types.String](ctx),
 								ElementType: types.StringType,
 							},
 							"preview_deployment_setting": schema.StringAttribute{
 								Description: "Controls whether commits to preview branches trigger a preview deployment.\nAvailable values: \"all\", \"none\", \"custom\".",
+								Computed:    true,
 								Optional:    true,
 								Validators: []validator.String{
 									stringvalidator.OneOfCaseInsensitive(
@@ -138,18 +162,22 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							},
 							"production_branch": schema.StringAttribute{
 								Description: "The production branch of the repository.",
+								Computed:    true,
 								Optional:    true,
 							},
 							"production_deployments_enabled": schema.BoolAttribute{
 								Description: "Whether to trigger a production deployment on commits to the production branch.",
+								Computed:    true,
 								Optional:    true,
 							},
 							"repo_id": schema.StringAttribute{
 								Description: "The ID of the repository.",
+								Computed:    true,
 								Optional:    true,
 							},
 							"repo_name": schema.StringAttribute{
 								Description: "The name of the repository.",
+								Computed:    true,
 								Optional:    true,
 							},
 						},
@@ -187,10 +215,11 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"always_use_latest_compatibility_date": schema.BoolAttribute{
-								Description: "Whether to always use the latest compatibility date for Pages Functions.",
-								Computed:    true,
-								Optional:    true,
-								Default:     booldefault.StaticBool(false),
+								Description:   "Whether to always use the latest compatibility date for Pages Functions.",
+								Computed:      true,
+								Optional:      true,
+								Default:       booldefault.StaticBool(false),
+								PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 							},
 							"analytics_engine_datasets": schema.MapNestedAttribute{
 								Description: "Analytics Engine bindings used for Pages Functions.",
@@ -212,15 +241,17 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"build_image_major_version": schema.Int64Attribute{
-								Description: "The major version of the build image to use for Pages Functions.",
-								Computed:    true,
-								Optional:    true,
-								Default:     int64default.StaticInt64(3),
+								Description:   "The major version of the build image to use for Pages Functions.",
+								Computed:      true,
+								Optional:      true,
+								Default:       int64default.StaticInt64(3),
+								PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 							},
 							"compatibility_date": schema.StringAttribute{
-								Description: "Compatibility date used for Pages Functions.",
-								Computed:    true,
-								Optional:    true,
+								Description:   "Compatibility date used for Pages Functions.",
+								Computed:      true,
+								Optional:      true,
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 							},
 							"compatibility_flags": schema.ListAttribute{
 								Description: "Compatibility flags used for Pages Functions.",
@@ -272,10 +303,11 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"fail_open": schema.BoolAttribute{
-								Description: "Whether to fail open when the deployment config cannot be applied.",
-								Computed:    true,
-								Optional:    true,
-								Default:     booldefault.StaticBool(true),
+								Description:   "Whether to fail open when the deployment config cannot be applied.",
+								Computed:      true,
+								Optional:      true,
+								Default:       booldefault.StaticBool(true),
+								PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 							},
 							"hyperdrive_bindings": schema.MapNestedAttribute{
 								Description: "Hyperdrive bindings used for Pages Functions.",
@@ -327,7 +359,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								Attributes: map[string]schema.Attribute{
 									"mode": schema.StringAttribute{
 										Description: "Placement mode.",
-										Required:    true,
+										Optional:    true,
 									},
 								},
 							},
@@ -374,6 +406,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 										},
 										"environment": schema.StringAttribute{
 											Description: "The Service environment.",
+											Computed:    true,
 											Optional:    true,
 										},
 									},
@@ -384,6 +417,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								Computed:           true,
 								Optional:           true,
 								DeprecationMessage: "All new projects now use the Standard usage model.",
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 								Validators: []validator.String{
 									stringvalidator.OneOfCaseInsensitive(
 										"standard",
@@ -391,7 +427,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 										"unbound",
 									),
 								},
-								Default: stringdefault.StaticString("standard"),
 							},
 							"vectorize_bindings": schema.MapNestedAttribute{
 								Description: "Vectorize bindings used for Pages Functions.",
@@ -428,10 +463,11 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"always_use_latest_compatibility_date": schema.BoolAttribute{
-								Description: "Whether to always use the latest compatibility date for Pages Functions.",
-								Computed:    true,
-								Optional:    true,
-								Default:     booldefault.StaticBool(false),
+								Description:   "Whether to always use the latest compatibility date for Pages Functions.",
+								Computed:      true,
+								Optional:      true,
+								Default:       booldefault.StaticBool(false),
+								PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 							},
 							"analytics_engine_datasets": schema.MapNestedAttribute{
 								Description: "Analytics Engine bindings used for Pages Functions.",
@@ -453,15 +489,17 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"build_image_major_version": schema.Int64Attribute{
-								Description: "The major version of the build image to use for Pages Functions.",
-								Computed:    true,
-								Optional:    true,
-								Default:     int64default.StaticInt64(3),
+								Description:   "The major version of the build image to use for Pages Functions.",
+								Computed:      true,
+								Optional:      true,
+								Default:       int64default.StaticInt64(3),
+								PlanModifiers: []planmodifier.Int64{int64planmodifier.UseStateForUnknown()},
 							},
 							"compatibility_date": schema.StringAttribute{
-								Description: "Compatibility date used for Pages Functions.",
-								Computed:    true,
-								Optional:    true,
+								Description:   "Compatibility date used for Pages Functions.",
+								Computed:      true,
+								Optional:      true,
+								PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 							},
 							"compatibility_flags": schema.ListAttribute{
 								Description: "Compatibility flags used for Pages Functions.",
@@ -513,10 +551,11 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"fail_open": schema.BoolAttribute{
-								Description: "Whether to fail open when the deployment config cannot be applied.",
-								Computed:    true,
-								Optional:    true,
-								Default:     booldefault.StaticBool(true),
+								Description:   "Whether to fail open when the deployment config cannot be applied.",
+								Computed:      true,
+								Optional:      true,
+								Default:       booldefault.StaticBool(true),
+								PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 							},
 							"hyperdrive_bindings": schema.MapNestedAttribute{
 								Description: "Hyperdrive bindings used for Pages Functions.",
@@ -568,7 +607,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								Attributes: map[string]schema.Attribute{
 									"mode": schema.StringAttribute{
 										Description: "Placement mode.",
-										Required:    true,
+										Optional:    true,
 									},
 								},
 							},
@@ -615,6 +654,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 										},
 										"environment": schema.StringAttribute{
 											Description: "The Service environment.",
+											Computed:    true,
 											Optional:    true,
 										},
 									},
@@ -625,6 +665,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								Computed:           true,
 								Optional:           true,
 								DeprecationMessage: "All new projects now use the Standard usage model.",
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 								Validators: []validator.String{
 									stringvalidator.OneOfCaseInsensitive(
 										"standard",
@@ -632,7 +675,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 										"unbound",
 									),
 								},
-								Default: stringdefault.StaticString("standard"),
 							},
 							"vectorize_bindings": schema.MapNestedAttribute{
 								Description: "Vectorize bindings used for Pages Functions.",
@@ -654,39 +696,47 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"created_on": schema.StringAttribute{
-				Description: "When the project was created.",
-				Computed:    true,
-				CustomType:  timetypes.RFC3339Type{},
+				Description:   "When the project was created.",
+				Computed:      true,
+				CustomType:    timetypes.RFC3339Type{},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"framework": schema.StringAttribute{
-				Description: "Framework the project is using.",
-				Computed:    true,
+				Description:   "Framework the project is using.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"framework_version": schema.StringAttribute{
-				Description: "Version of the framework the project is using.",
-				Computed:    true,
+				Description:   "Version of the framework the project is using.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"preview_script_name": schema.StringAttribute{
-				Description: "Name of the preview script.",
-				Computed:    true,
+				Description:   "Name of the preview script.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"production_script_name": schema.StringAttribute{
-				Description: "Name of the production script.",
-				Computed:    true,
+				Description:   "Name of the production script.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"subdomain": schema.StringAttribute{
-				Description: "The Cloudflare subdomain associated with the project.",
-				Computed:    true,
+				Description:   "The Cloudflare subdomain associated with the project.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"uses_functions": schema.BoolAttribute{
-				Description: "Whether the project uses functions.",
-				Computed:    true,
+				Description:   "Whether the project uses functions.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()},
 			},
 			"domains": schema.ListAttribute{
-				Description: "A list of associated custom domains for the project.",
-				Computed:    true,
-				CustomType:  customfield.NewListType[types.String](ctx),
-				ElementType: types.StringType,
+				Description:   "A list of associated custom domains for the project.",
+				Computed:      true,
+				CustomType:    customfield.NewListType[types.String](ctx),
+				ElementType:   types.StringType,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
 			},
 			"canonical_deployment": schema.SingleNestedAttribute{
 				Description: "Most recent production deployment of the project.",
@@ -1009,20 +1059,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					"url": schema.StringAttribute{
 						Description: "The live URL to view this deployment.",
 						Computed:    true,
-					},
-					"skip_reason": schema.StringAttribute{
-						Description: "Why the deployment was skipped.\nAvailable values: \"commit_message\", \"preview_deployments_disabled\", \"production_deployments_disabled\", \"path_config\", \"branch_config\", \"pages_to_workers_conversion\".",
-						Computed:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOfCaseInsensitive(
-								"commit_message",
-								"preview_deployments_disabled",
-								"production_deployments_disabled",
-								"path_config",
-								"branch_config",
-								"pages_to_workers_conversion",
-							),
-						},
 					},
 					"uses_functions": schema.BoolAttribute{
 						Description: "Whether the deployment uses functions.",
@@ -1351,20 +1387,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					"url": schema.StringAttribute{
 						Description: "The live URL to view this deployment.",
 						Computed:    true,
-					},
-					"skip_reason": schema.StringAttribute{
-						Description: "Why the deployment was skipped.\nAvailable values: \"commit_message\", \"preview_deployments_disabled\", \"production_deployments_disabled\", \"path_config\", \"branch_config\", \"pages_to_workers_conversion\".",
-						Computed:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOfCaseInsensitive(
-								"commit_message",
-								"preview_deployments_disabled",
-								"production_deployments_disabled",
-								"path_config",
-								"branch_config",
-								"pages_to_workers_conversion",
-							),
-						},
 					},
 					"uses_functions": schema.BoolAttribute{
 						Description: "Whether the deployment uses functions.",

@@ -20,6 +20,7 @@ var _ resource.ResourceWithConfigValidators = (*QueueResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Queues Read",
@@ -46,19 +47,24 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Required: true,
 			},
 			"settings": schema.SingleNestedAttribute{
-				Optional: true,
+				Optional:   true,
+				Computed:   true,
+				CustomType: customfield.NewNestedObjectType[QueueSettingsModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"delivery_delay": schema.Float64Attribute{
 						Description: "Number of seconds to delay delivery of all messages to consumers.",
 						Optional:    true,
+						Computed:    true,
 					},
 					"delivery_paused": schema.BoolAttribute{
 						Description: "Indicates if message delivery to consumers is currently paused.",
 						Optional:    true,
+						Computed:    true,
 					},
 					"message_retention_period": schema.Float64Attribute{
 						Description: "Number of seconds after which an unconsumed message will be delayed.",
 						Optional:    true,
+						Computed:    true,
 					},
 				},
 			},

@@ -26,7 +26,7 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.StringAttribute{
 				Description: "Identifier.",
-				Required:    true,
+				Optional:    true,
 			},
 			"environment": schema.StringAttribute{
 				Description: "Worker environment associated with the domain.",
@@ -69,6 +69,11 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 							Description: "ID of the TLS certificate issued for the domain.",
 							Computed:    true,
 						},
+						"environment": schema.StringAttribute{
+							Description:        "Worker environment associated with the domain.",
+							Computed:           true,
+							DeprecationMessage: "This attribute is deprecated.",
+						},
 						"hostname": schema.StringAttribute{
 							Description: "Hostname of the domain. Can be either the zone apex or a subdomain of the zone. Requests to this hostname will be routed to the configured Worker.",
 							Computed:    true,
@@ -84,11 +89,6 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 						"zone_name": schema.StringAttribute{
 							Description: "Name of the zone containing the domain hostname.",
 							Computed:    true,
-						},
-						"environment": schema.StringAttribute{
-							Description:        "Worker environment associated with the domain.",
-							Computed:           true,
-							DeprecationMessage: "This attribute is deprecated.",
 						},
 					},
 				},

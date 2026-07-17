@@ -16,6 +16,7 @@ var _ resource.ResourceWithConfigValidators = (*WorkersCustomDomainResource)(nil
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Workers Scripts Read",
@@ -43,6 +44,13 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"environment": schema.StringAttribute{
+				Description:        "Worker environment associated with the domain.",
+				Computed:           true,
+				Optional:           true,
+				DeprecationMessage: "This attribute is deprecated.",
+				PlanModifiers:      []planmodifier.String{stringplanmodifier.RequiresReplaceIfConfigured()},
+			},
 			"zone_id": schema.StringAttribute{
 				Description:   "ID of the zone containing the domain hostname.",
 				Computed:      true,
@@ -58,11 +66,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"cert_id": schema.StringAttribute{
 				Description: "ID of the TLS certificate issued for the domain.",
 				Computed:    true,
-			},
-			"environment": schema.StringAttribute{
-				Description:        "Worker environment associated with the domain.",
-				Computed:           true,
-				DeprecationMessage: "This attribute is deprecated.",
 			},
 		},
 	}

@@ -9,10 +9,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -24,6 +26,7 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustDLPCustomProfileResourc
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Zero Trust Read",
@@ -60,28 +63,53 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"context_awareness": schema.SingleNestedAttribute{
 				Description:        "Scan the context of predefined entries to only return matches surrounded by keywords.",
 				Optional:           true,
+				Computed:           true,
 				DeprecationMessage: "This attribute is deprecated.",
+				Default: objectdefault.StaticValue(types.ObjectValueMust(
+					map[string]attr.Type{
+						"enabled": types.BoolType,
+						"skip": types.ObjectType{AttrTypes: map[string]attr.Type{
+							"files": types.BoolType,
+						}},
+					},
+					map[string]attr.Value{
+						"enabled": types.BoolValue(false),
+						"skip": types.ObjectValueMust(
+							map[string]attr.Type{"files": types.BoolType},
+							map[string]attr.Value{"files": types.BoolValue(false)},
+						),
+					},
+				)),
 				Attributes: map[string]schema.Attribute{
 					"enabled": schema.BoolAttribute{
 						Description: "If true, scan the context of predefined entries to only return matches surrounded by keywords.",
-						Required:    true,
+						Optional:    true,
+						Computed:    true,
+						Default:     booldefault.StaticBool(false),
 					},
 					"skip": schema.SingleNestedAttribute{
 						Description: "Content types to exclude from context analysis and return all matches.",
-						Required:    true,
+						Optional:    true,
+						Computed:    true,
+						Default: objectdefault.StaticValue(types.ObjectValueMust(
+							map[string]attr.Type{"files": types.BoolType},
+							map[string]attr.Value{"files": types.BoolValue(false)},
+						)),
 						Attributes: map[string]schema.Attribute{
 							"files": schema.BoolAttribute{
 								Description: "If the content type is a file, skip context analysis and return all matches.",
-								Required:    true,
+								Optional:    true,
+								Computed:    true,
+								Default:     booldefault.StaticBool(false),
 							},
 						},
 					},
 				},
 			},
-			"entries": schema.ListNestedAttribute{
+			"entries": schema.SetNestedAttribute{
 				Description:        "Custom entries from this profile.\nIf this field is omitted, entries owned by this profile will not be changed.",
 				Optional:           true,
-				DeprecationMessage: "This attribute is deprecated.",
+				DeprecationMessage: "This attribute will be sunset on 01/01/2026",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"enabled": schema.BoolAttribute{
@@ -129,7 +157,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 			},
-			"shared_entries": schema.ListNestedAttribute{
+			"shared_entries": schema.SetNestedAttribute{
 				Description: "Entries from other profiles (e.g. pre-defined Cloudflare profiles, or your Microsoft Information Protection profiles).",
 				Optional:    true,
 				NestedObject: schema.NestedAttributeObject{
@@ -139,6 +167,19 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						},
 						"entry_id": schema.StringAttribute{
 							Required: true,
+						},
+						"entry_type": schema.StringAttribute{
+							Description: `Available values: "custom", "predefined", "integration", "exact_data", "document_fingerprint".`,
+							Required:    true,
+							Validators: []validator.String{
+								stringvalidator.OneOfCaseInsensitive(
+									"custom",
+									"predefined",
+									"integration",
+									"exact_data",
+									"document_fingerprint",
+								),
+							},
 						},
 					},
 				},
@@ -168,17 +209,19 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Default:  booldefault.StaticBool(false),
 			},
 			"created_at": schema.StringAttribute{
-				Description: "When the profile was created.",
-				Computed:    true,
-				CustomType:  timetypes.RFC3339Type{},
+				Description:   "When the profile was created.",
+				Computed:      true,
+				CustomType:    timetypes.RFC3339Type{},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"open_access": schema.BoolAttribute{
 				Description: "Whether this profile can be accessed by anyone.",
 				Computed:    true,
 			},
 			"type": schema.StringAttribute{
-				Description: `Available values: "custom", "predefined", "integration".`,
-				Computed:    true,
+				Description:   `Available values: "custom", "predefined", "integration".`,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive(
 						"custom",

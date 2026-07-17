@@ -7,18 +7,23 @@ import (
 
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 var _ resource.ResourceWithConfigValidators = (*ZeroTrustAccessServiceTokenResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Access: Service Tokens Read",
@@ -49,12 +54,22 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Description: "The expiration of the previous `client_secret`. This can be modified at any point after a rotation. For example, you may extend it further into the future if you need more time to update services with the new secret; or move it into the past to immediately invalidate the previous token in case of compromise.",
 				Optional:    true,
 				CustomType:  timetypes.RFC3339Type{},
+				Validators: []validator.String{
+					stringvalidator.AlsoRequires(path.Expressions{
+						path.MatchRoot("client_secret_version"),
+					}...),
+				},
 			},
 			"client_secret_version": schema.Float64Attribute{
 				Description: "A version number identifying the current `client_secret` associated with the service token. Incrementing it triggers a rotation; the previous secret will still be accepted until the time indicated by `previous_client_secret_expires_at`.",
 				Computed:    true,
 				Optional:    true,
 				Default:     float64default.StaticFloat64(1),
+				Validators: []validator.Float64{
+					float64validator.AlsoRequires(path.Expressions{
+						path.MatchRoot("previous_client_secret_expires_at"),
+					}...),
+				},
 			},
 			"duration": schema.StringAttribute{
 				Description: "The duration for how long the service token will be valid. Must be in the format `300ms` or `2h45m`. Valid time units are: ns, us (or µs), ms, s, m, h. The default is 1 year in hours (8760h).",
@@ -63,13 +78,15 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Default:     stringdefault.StaticString("8760h"),
 			},
 			"client_id": schema.StringAttribute{
-				Description: "The Client ID for the service token. Access will check for this value in the `CF-Access-Client-ID` request header.",
-				Computed:    true,
+				Description:   "The Client ID for the service token. Access will check for this value in the `CF-Access-Client-ID` request header.",
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"client_secret": schema.StringAttribute{
-				Description: "The Client Secret for the service token. Access will check for this value in the `CF-Access-Client-Secret` request header.",
-				Computed:    true,
-				Sensitive:   true,
+				Description:   "The Client Secret for the service token. Access will check for this value in the `CF-Access-Client-Secret` request header.",
+				Computed:      true,
+				Sensitive:     true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"expires_at": schema.StringAttribute{
 				Computed:   true,

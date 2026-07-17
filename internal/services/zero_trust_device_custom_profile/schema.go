@@ -6,14 +6,20 @@ import (
 	"context"
 
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -21,6 +27,7 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustDeviceCustomProfileReso
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Zero Trust Write",
@@ -48,8 +55,16 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Required:    true,
 			},
 			"precedence": schema.Float64Attribute{
-				Description: "The precedence of the policy. Lower values indicate higher precedence. Policies will be evaluated in ascending order of this field.",
-				Required:    true,
+				Description:   "The precedence of the policy. Lower values indicate higher precedence. Policies will be evaluated in ascending order of this field.",
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.Float64{float64planmodifier.UseStateForUnknown()},
+			},
+			"description": schema.StringAttribute{
+				Description: "A description of the policy.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString(""),
 			},
 			"lan_allow_minutes": schema.Float64Attribute{
 				Description: "The amount of time in minutes a user is allowed access to their LAN. A value of 0 will allow LAN access until the next WARP reconnection, such as a reboot or a laptop waking from sleep. Note that this field is omitted from the response if null or unset.",
@@ -58,6 +73,64 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"lan_allow_subnet_size": schema.Float64Attribute{
 				Description: "The size of the subnet for the local access network. Note that this field is omitted from the response if null or unset.",
 				Optional:    true,
+			},
+			"exclude": schema.ListNestedAttribute{
+				Description:   "List of routes excluded in the WARP client's tunnel. Both 'exclude' and 'include' cannot be set in the same request.",
+				Optional:      true,
+				Computed:      true,
+				CustomType:    customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileExcludeModel](ctx),
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				Validators: []validator.List{
+					listvalidator.ConflictsWith(path.MatchRoot("include")),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"address": schema.StringAttribute{
+							Description: "The address in CIDR format to exclude from the tunnel. If `address` is present, `host` must not be present.",
+							Optional:    true,
+							Computed:    true,
+						},
+						"description": schema.StringAttribute{
+							Description: "A description of the Split Tunnel item, displayed in the client UI.",
+							Optional:    true,
+							Computed:    true,
+						},
+						"host": schema.StringAttribute{
+							Description: "The domain name to exclude from the tunnel. If `host` is present, `address` must not be present.",
+							Optional:    true,
+							Computed:    true,
+						},
+					},
+				},
+			},
+			"include": schema.ListNestedAttribute{
+				Description:   "List of routes included in the WARP client's tunnel. Both 'exclude' and 'include' cannot be set in the same request.",
+				Optional:      true,
+				Computed:      true,
+				CustomType:    customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileIncludeModel](ctx),
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				Validators: []validator.List{
+					listvalidator.ConflictsWith(path.MatchRoot("exclude")),
+				},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"address": schema.StringAttribute{
+							Description: "The address in CIDR format to include in the tunnel. If `address` is present, `host` must not be present.",
+							Optional:    true,
+							Computed:    true,
+						},
+						"description": schema.StringAttribute{
+							Description: "A description of the Split Tunnel item, displayed in the client UI.",
+							Optional:    true,
+							Computed:    true,
+						},
+						"host": schema.StringAttribute{
+							Description: "The domain name to include in the tunnel. If `host` is present, `address` must not be present.",
+							Optional:    true,
+							Computed:    true,
+						},
+					},
+				},
 			},
 			"global_acceleration": schema.SingleNestedAttribute{
 				Description: "Global Acceleration settings for China. When configured, WARP clients connect to the Global Accelerator addresses instead of the default ones. Please contact your account representative to enable this feature on your account. See https://developers.cloudflare.com/china-network/concepts/global-acceleration/.",
@@ -81,6 +154,24 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 						Description: "IP:port entries for the WireGuard tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.",
 						Required:    true,
 						ElementType: types.StringType,
+					},
+				},
+			},
+			"service_mode_v2": schema.SingleNestedAttribute{
+				Optional:      true,
+				Computed:      true,
+				CustomType:    customfield.NewNestedObjectType[ZeroTrustDeviceCustomProfileServiceModeV2Model](ctx),
+				PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
+				Attributes: map[string]schema.Attribute{
+					"mode": schema.StringAttribute{
+						Description: "The mode to run the WARP client under.",
+						Optional:    true,
+						Computed:    true,
+					},
+					"port": schema.Float64Attribute{
+						Description: "The port number when used with proxy mode.",
+						Optional:    true,
+						Computed:    true,
 					},
 				},
 			},
@@ -129,12 +220,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Optional:    true,
 				Default:     float64default.StaticFloat64(180),
 			},
-			"description": schema.StringAttribute{
-				Description: "A description of the policy.",
-				Computed:    true,
-				Optional:    true,
-				Default:     stringdefault.StaticString(""),
-			},
 			"disable_auto_fallback": schema.BoolAttribute{
 				Description: "If the `dns_server` field of a fallback domain is not present, the client will fall back to a best guess of the default/system DNS resolvers unless this policy option is set to `true`.",
 				Computed:    true,
@@ -178,10 +263,10 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Default:     booldefault.StaticBool(false),
 			},
 			"tunnel_protocol": schema.StringAttribute{
-				Description: "Determines which tunnel protocol to use.",
-				Computed:    true,
-				Optional:    true,
-				Default:     stringdefault.StaticString(""),
+				Description:   "Determines which tunnel protocol to use.",
+				Computed:      true,
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"dns_search_suffixes": schema.ListNestedAttribute{
 				Description: "List of DNS search suffixes to apply to clients. Suffixes are evaluated in order. Use an empty array to clear.",
@@ -202,83 +287,18 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 			},
-			"exclude": schema.ListNestedAttribute{
-				Description: "List of routes excluded in the WARP client's tunnel. Both 'exclude' and 'include' cannot be set in the same request.",
-				Computed:    true,
-				Optional:    true,
-				CustomType:  customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileExcludeModel](ctx),
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"address": schema.StringAttribute{
-							Description: "The address in CIDR format to exclude from the tunnel. If `address` is present, `host` must not be present.",
-							Computed:    true,
-							Optional:    true,
-						},
-						"description": schema.StringAttribute{
-							Description: "A description of the Split Tunnel item, displayed in the client UI.",
-							Computed:    true,
-							Optional:    true,
-						},
-						"host": schema.StringAttribute{
-							Description: "The domain name to exclude from the tunnel. If `host` is present, `address` must not be present.",
-							Computed:    true,
-							Optional:    true,
-						},
-					},
-				},
-			},
-			"include": schema.ListNestedAttribute{
-				Description: "List of routes included in the WARP client's tunnel. Both 'exclude' and 'include' cannot be set in the same request.",
-				Computed:    true,
-				Optional:    true,
-				CustomType:  customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileIncludeModel](ctx),
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"address": schema.StringAttribute{
-							Description: "The address in CIDR format to include in the tunnel. If `address` is present, `host` must not be present.",
-							Computed:    true,
-							Optional:    true,
-						},
-						"description": schema.StringAttribute{
-							Description: "A description of the Split Tunnel item, displayed in the client UI.",
-							Computed:    true,
-							Optional:    true,
-						},
-						"host": schema.StringAttribute{
-							Description: "The domain name to include in the tunnel. If `host` is present, `address` must not be present.",
-							Computed:    true,
-							Optional:    true,
-						},
-					},
-				},
-			},
-			"service_mode_v2": schema.SingleNestedAttribute{
-				Computed:   true,
-				Optional:   true,
-				CustomType: customfield.NewNestedObjectType[ZeroTrustDeviceCustomProfileServiceModeV2Model](ctx),
-				Attributes: map[string]schema.Attribute{
-					"mode": schema.StringAttribute{
-						Description: "The mode to run the WARP client under.",
-						Computed:    true,
-						Optional:    true,
-					},
-					"port": schema.Float64Attribute{
-						Description: "The port number when used with proxy mode.",
-						Computed:    true,
-						Optional:    true,
-					},
-				},
-			},
 			"default": schema.BoolAttribute{
 				Description: "Whether the policy is the default policy for an account.",
 				Computed:    true,
 			},
 			"gateway_unique_id": schema.StringAttribute{
-				Computed: true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"fallback_domains": schema.ListNestedAttribute{
-				Computed:   true,
-				CustomType: customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileFallbackDomainsModel](ctx),
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				CustomType:    customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileFallbackDomainsModel](ctx),
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"suffix": schema.StringAttribute{
@@ -299,8 +319,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"target_tests": schema.ListNestedAttribute{
-				Computed:   true,
-				CustomType: customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileTargetTestsModel](ctx),
+				Computed:      true,
+				PlanModifiers: []planmodifier.List{listplanmodifier.UseStateForUnknown()},
+				CustomType:    customfield.NewNestedObjectListType[ZeroTrustDeviceCustomProfileTargetTestsModel](ctx),
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{

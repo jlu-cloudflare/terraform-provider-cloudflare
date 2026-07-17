@@ -24,6 +24,7 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustGatewayPolicyResource)(
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Description:   "Identify the API resource with a UUID.",
@@ -68,7 +69,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"filters": schema.ListAttribute{
 				Description: "Specify the protocol or layer to evaluate the traffic, identity, and device posture expressions. Can only contain a single value.",
+				Computed:    true,
 				Optional:    true,
+				CustomType:  customfield.NewListType[types.String](ctx),
 				Validators: []validator.List{
 					listvalidator.ValueStringsAre(
 						stringvalidator.OneOfCaseInsensitive(
@@ -142,7 +145,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				CustomType:  customfield.NewNestedObjectType[ZeroTrustGatewayPolicyRuleSettingsModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"add_headers": schema.MapAttribute{
-						Description: "Add custom headers to allowed requests as key-value pairs. Use header names as keys that map to arrays of header values. Header values may contain `@{selector.name}` variable references that are interpolated at the edge. Use `@@{` to escape a literal `@{`. A maximum of 20 header operations (add + set + delete) is allowed per policy. Each header name may not exceed 256 bytes and each header value may not exceed 4 KB. Settable only for `http` rules with the action set to `allow`.",
+						Description: "Add custom headers to allowed requests as key-value pairs. Use header names as keys that map to arrays of header values. Settable only for `http` rules with the action set to `allow`.",
 						Optional:    true,
 						ElementType: types.ListType{
 							ElemType: types.StringType,
@@ -383,6 +386,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					"ignore_cname_category_matches": schema.BoolAttribute{
 						Description: "Ignore category matches at CNAME domains in a response. When off, evaluate categories in this rule against all CNAME domain categories in the response. Settable only for `dns` and `dns_resolver` rules.",
 						Optional:    true,
+						Computed:    true,
 					},
 					"insecure_disable_dnssec_validation": schema.BoolAttribute{
 						Description: "Specify whether to disable DNSSEC validation (for Allow actions) [INSECURE]. Settable only for `dns` rules.",

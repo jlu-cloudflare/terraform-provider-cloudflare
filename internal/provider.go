@@ -4,10 +4,14 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/option"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/consts"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/customvalidator"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/access_rule"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/account"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/account_api_token_permission_groups"
@@ -211,8 +215,8 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/workers_script_subdomain"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/workflow"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_ai_controls_mcp_portal"
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_application"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_ai_controls_mcp_server"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_application"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_custom_page"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_group"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zero_trust_access_identity_provider"
@@ -287,10 +291,14 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zone_lockdown"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zone_setting"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/services/zone_subscription"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/utils"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -306,11 +314,12 @@ type CloudflareProvider struct {
 
 // CloudflareProviderModel describes the provider data model.
 type CloudflareProviderModel struct {
-	BaseURL        types.String `tfsdk:"base_url" json:"base_url,optional"`
-	APIToken       types.String `tfsdk:"api_token" json:"api_token,optional"`
-	APIKey         types.String `tfsdk:"api_key" json:"api_key,optional"`
-	APIEmail       types.String `tfsdk:"api_email" json:"api_email,optional"`
-	UserServiceKey types.String `tfsdk:"user_service_key" json:"user_service_key,optional"`
+	APIKey                  types.String `tfsdk:"api_key" json:"api_key"`
+	APIUserServiceKey       types.String `tfsdk:"api_user_service_key" json:"api_user_service_key"`
+	Email                   types.String `tfsdk:"email" json:"email"`
+	APIToken                types.String `tfsdk:"api_token" json:"api_token"`
+	UserAgentOperatorSuffix types.String `tfsdk:"user_agent_operator_suffix" json:"user_agent_operator_suffix"`
+	BaseURL                 types.String `tfsdk:"base_url" json:"base_url"`
 }
 
 func (p *CloudflareProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -321,21 +330,53 @@ func (p *CloudflareProvider) Metadata(ctx context.Context, req provider.Metadata
 func ProviderSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"base_url": schema.StringAttribute{
-				Description: "Set the base url that the provider connects to.",
-				Optional:    true,
+			consts.EmailSchemaKey: schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: fmt.Sprintf("A registered Cloudflare email address. Alternatively, can be configured using the `%s` environment variable. Required when using `api_key`. Conflicts with `api_token`.", consts.EmailEnvVarKey),
+				Validators:          []validator.String{},
 			},
-			"api_token": schema.StringAttribute{
-				Optional: true,
+
+			consts.APIKeySchemaKey: schema.StringAttribute{
+				Optional:            true,
+				Sensitive:           true,
+				MarkdownDescription: fmt.Sprintf("The API key for operations. Alternatively, can be configured using the `%s` environment variable. API keys are [now considered legacy by Cloudflare](https://developers.cloudflare.com/fundamentals/api/get-started/keys/#limitations), API tokens should be used instead. Must provide only one of `api_key`, `api_token`, `api_user_service_key`.", consts.APIKeyEnvVarKey),
+				Validators: []validator.String{
+					customvalidator.NewSensitiveRegexMatchesValidator(
+						regexp.MustCompile(`^[0-9A-Za-z\-_]{37,60}$`),
+						"API key must only contain characters 0-9, a-z, A-Z, hyphens and underscores",
+					),
+					stringvalidator.AlsoRequires(path.Expressions{
+						path.MatchRoot(consts.EmailSchemaKey),
+					}...),
+				},
 			},
-			"api_key": schema.StringAttribute{
-				Optional: true,
+
+			consts.APITokenSchemaKey: schema.StringAttribute{
+				Optional:            true,
+				Sensitive:           true,
+				MarkdownDescription: fmt.Sprintf("The API Token for operations. Alternatively, can be configured using the `%s` environment variable. Must provide only one of `api_key`, `api_token`, `api_user_service_key`.", consts.APITokenEnvVarKey),
+				Validators: []validator.String{
+					customvalidator.NewSensitiveRegexMatchesValidator(
+						regexp.MustCompile(`^[0-9A-Za-z\-_]{40,80}$`),
+						"API tokens must only contain characters a-z, A-Z, 0-9, hyphens and underscores",
+					),
+				},
 			},
-			"api_email": schema.StringAttribute{
-				Optional: true,
+
+			consts.APIUserServiceKeySchemaKey: schema.StringAttribute{
+				Optional:            true,
+				Sensitive:           true,
+				MarkdownDescription: fmt.Sprintf("A special Cloudflare API key good for a restricted set of endpoints. Alternatively, can be configured using the `%s` environment variable. Must provide only one of `api_key`, `api_token`, `api_user_service_key`.", consts.APIUserServiceKeyEnvVarKey),
 			},
-			"user_service_key": schema.StringAttribute{
-				Optional: true,
+
+			consts.UserAgentOperatorSuffixSchemaKey: schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: fmt.Sprintf("A value to append to the HTTP User Agent for all API calls. This value is not something most users need to modify however, if you are using a non-standard provider or operator configuration, this is recommended to assist in uniquely identifying your traffic. **Setting this value will remove the Terraform version from the HTTP User Agent string and may have unintended consequences**. Alternatively, can be configured using the `%s` environment variable.", consts.UserAgentOperatorSuffixEnvVarKey),
+			},
+
+			consts.BaseURLSchemaKey: schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: fmt.Sprintf("Value to override the default HTTP client base URL. Alternatively, can be configured using the `%s` environment variable.", consts.BaseURLSchemaKey),
 			},
 		},
 	}
@@ -371,16 +412,39 @@ func (p *CloudflareProvider) Configure(ctx context.Context, req provider.Configu
 		opts = append(opts, option.WithAPIKey(o))
 	}
 
-	if !data.APIEmail.IsNull() && !data.APIEmail.IsUnknown() {
-		opts = append(opts, option.WithAPIEmail(data.APIEmail.ValueString()))
+	if !data.Email.IsNull() && !data.Email.IsUnknown() {
+		opts = append(opts, option.WithAPIEmail(data.Email.ValueString()))
 	} else if o, ok := os.LookupEnv("CLOUDFLARE_EMAIL"); ok {
 		opts = append(opts, option.WithAPIEmail(o))
 	}
 
-	if !data.UserServiceKey.IsNull() && !data.UserServiceKey.IsUnknown() {
-		opts = append(opts, option.WithUserServiceKey(data.UserServiceKey.ValueString()))
+	if !data.APIUserServiceKey.IsNull() && !data.APIUserServiceKey.IsUnknown() {
+		opts = append(opts, option.WithUserServiceKey(data.APIUserServiceKey.ValueString()))
 	} else if o, ok := os.LookupEnv("CLOUDFLARE_API_USER_SERVICE_KEY"); ok {
 		opts = append(opts, option.WithUserServiceKey(o))
+	}
+
+	var pluginVersion *string
+	framework := "terraform-plugin-framework"
+	userAgentParams := utils.UserAgentBuilderParams{
+		ProviderVersion: &p.version,
+		PluginType:      &framework,
+		PluginVersion:   pluginVersion,
+	}
+
+	if !data.UserAgentOperatorSuffix.IsNull() {
+		operatorSuffix := data.UserAgentOperatorSuffix.String()
+		userAgentParams.OperatorSuffix = &operatorSuffix
+	} else {
+		userAgentParams.TerraformVersion = &req.TerraformVersion
+	}
+
+	opts = append(opts, option.WithHeader("user-agent", userAgentParams.String()))
+	opts = append(opts, option.WithHeader("x-stainless-package-version", p.version))
+	opts = append(opts, option.WithHeader("x-stainless-runtime", framework))
+	opts = append(opts, option.WithHeader("x-stainless-lang", "Terraform"))
+	if pluginVersion != nil {
+		opts = append(opts, option.WithHeader("x-stainless-runtime-version", *pluginVersion))
 	}
 
 	client := cloudflare.NewClient(
@@ -430,8 +494,6 @@ func (p *CloudflareProvider) Resources(ctx context.Context) []func() resource.Re
 		client_certificate.NewResource,
 		custom_ssl.NewResource,
 		custom_csr.NewResource,
-		mtls_certificate.NewResource,
-		ruleset.NewResource,
 		custom_hostname.NewResource,
 		custom_hostname_fallback_origin.NewResource,
 		dns_firewall.NewResource,
@@ -463,8 +525,8 @@ func (p *CloudflareProvider) Resources(ctx context.Context) []func() resource.Re
 		logpush_job.NewResource,
 		logpush_ownership_challenge.NewResource,
 		logpull_retention.NewResource,
-		authenticated_origin_pulls.NewResource,
 		authenticated_origin_pulls_certificate.NewResource,
+		authenticated_origin_pulls.NewResource,
 		authenticated_origin_pulls_hostname_certificate.NewResource,
 		authenticated_origin_pulls_settings.NewResource,
 		page_rule.NewResource,
@@ -487,13 +549,14 @@ func (p *CloudflareProvider) Resources(ctx context.Context) []func() resource.Re
 		queue.NewResource,
 		queue_consumer.NewResource,
 		api_shield.NewResource,
-		api_shield_operation.NewResource,
 		api_shield_discovery_operation.NewResource,
+		api_shield_operation.NewResource,
 		api_shield_operation_schema_validation_settings.NewResource,
 		api_shield_schema_validation_settings.NewResource,
 		api_shield_schema.NewResource,
 		managed_transforms.NewResource,
 		page_shield_policy.NewResource,
+		ruleset.NewResource,
 		url_normalization_settings.NewResource,
 		spectrum_application.NewResource,
 		regional_hostname.NewResource,
@@ -513,6 +576,8 @@ func (p *CloudflareProvider) Resources(ctx context.Context) []func() resource.Re
 		magic_transit_cf1_site.NewResource,
 		magic_network_monitoring_configuration.NewResource,
 		magic_network_monitoring_rule.NewResource,
+		moq_relay.NewResource,
+		mtls_certificate.NewResource,
 		pages_project.NewResource,
 		pages_domain.NewResource,
 		registrar_domain.NewResource,
@@ -613,11 +678,10 @@ func (p *CloudflareProvider) Resources(ctx context.Context) []func() resource.Re
 		observatory_scheduled_test.NewResource,
 		hostname_tls_setting.NewResource,
 		snippet.NewResource,
-		snippet_rules.NewResource,
 		snippets.NewResource, // deprecated.
+		snippet_rules.NewResource,
 		calls_sfu_app.NewResource,
 		calls_turn_app.NewResource,
-		moq_relay.NewResource,
 		cloudforce_one_request.NewResource,
 		cloudforce_one_request_message.NewResource,
 		cloudforce_one_request_priority.NewResource,
@@ -767,9 +831,9 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		logpush_job.NewLogpushJobDataSource,
 		logpush_job.NewLogpushJobsDataSource,
 		logpull_retention.NewLogpullRetentionDataSource,
-		authenticated_origin_pulls.NewAuthenticatedOriginPullsDataSource,
 		authenticated_origin_pulls_certificate.NewAuthenticatedOriginPullsCertificateDataSource,
 		authenticated_origin_pulls_certificate.NewAuthenticatedOriginPullsCertificatesDataSource,
+		authenticated_origin_pulls.NewAuthenticatedOriginPullsDataSource,
 		authenticated_origin_pulls_hostname_certificate.NewAuthenticatedOriginPullsHostnameCertificateDataSource,
 		authenticated_origin_pulls_hostname_certificate.NewAuthenticatedOriginPullsHostnameCertificatesDataSource,
 		authenticated_origin_pulls_settings.NewAuthenticatedOriginPullsSettingsDataSource,
@@ -821,11 +885,11 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		page_shield_scripts.NewPageShieldScriptsListDataSource,
 		page_shield_cookies.NewPageShieldCookiesDataSource,
 		page_shield_cookies.NewPageShieldCookiesListDataSource,
+		ruleset.NewRulesetDataSource,
+		ruleset.NewRulesetsDataSource,
 		url_normalization_settings.NewURLNormalizationSettingsDataSource,
 		spectrum_application.NewSpectrumApplicationDataSource,
 		spectrum_application.NewSpectrumApplicationsDataSource,
-		ruleset.NewRulesetDataSource,
-		ruleset.NewRulesetsDataSource,
 		regional_hostname.NewRegionalHostnameDataSource,
 		regional_hostname.NewRegionalHostnamesDataSource,
 		address_map.NewAddressMapDataSource,
@@ -855,6 +919,8 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		magic_network_monitoring_configuration.NewMagicNetworkMonitoringConfigurationDataSource,
 		magic_network_monitoring_rule.NewMagicNetworkMonitoringRuleDataSource,
 		magic_network_monitoring_rule.NewMagicNetworkMonitoringRulesDataSource,
+		moq_relay.NewMoQRelayDataSource,
+		moq_relay.NewMoQRelaysDataSource,
 		mtls_certificate.NewMTLSCertificateDataSource,
 		mtls_certificate.NewMTLSCertificatesDataSource,
 		mtls_certificate_associations.NewMTLSCertificateAssociationsDataSource,
@@ -950,12 +1016,12 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		zero_trust_tunnel_warp_connector.NewZeroTrustTunnelWARPConnectorsDataSource,
 		zero_trust_tunnel_warp_connector_token.NewZeroTrustTunnelWARPConnectorTokenDataSource,
 		zero_trust_tunnel_warp_connector_config.NewZeroTrustTunnelWARPConnectorConfigDataSource,
-		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicDataSource,
-		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicsDataSource,
 		zero_trust_dlp_dataset.NewZeroTrustDLPDatasetDataSource,
 		zero_trust_dlp_dataset.NewZeroTrustDLPDatasetsDataSource,
 		zero_trust_dlp_settings.NewZeroTrustDLPSettingsDataSource,
 		zero_trust_dlp_custom_profile.NewZeroTrustDLPCustomProfileDataSource,
+		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicDataSource,
+		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicsDataSource,
 		zero_trust_dlp_predefined_profile.NewZeroTrustDLPPredefinedProfileDataSource,
 		zero_trust_dlp_entry.NewZeroTrustDLPEntryDataSource,
 		zero_trust_dlp_entry.NewZeroTrustDLPEntriesDataSource,
@@ -1028,15 +1094,13 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		hostname_tls_setting.NewHostnameTLSSettingDataSource,
 		snippet.NewSnippetDataSource,
 		snippet.NewSnippetsDataSource,
-		snippet_rules.NewSnippetRulesDataSource,
+		snippet_rules.NewSnippetRulesListDataSource,
 		snippets.NewSnippetsDataSource,     // deprecated.
 		snippets.NewSnippetsListDataSource, // deprecated.
 		calls_sfu_app.NewCallsSFUAppDataSource,
 		calls_sfu_app.NewCallsSFUAppsDataSource,
 		calls_turn_app.NewCallsTURNAppDataSource,
 		calls_turn_app.NewCallsTURNAppsDataSource,
-		moq_relay.NewMoQRelayDataSource,
-		moq_relay.NewMoQRelaysDataSource,
 		cloudforce_one_request.NewCloudforceOneRequestDataSource,
 		cloudforce_one_request.NewCloudforceOneRequestsDataSource,
 		cloudforce_one_request_message.NewCloudforceOneRequestMessageDataSource,

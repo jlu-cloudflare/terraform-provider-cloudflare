@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -24,6 +23,7 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustAccessAIControlsMcpServ
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"MCP Portals Read",
@@ -66,6 +66,10 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"description": schema.StringAttribute{
 				Optional: true,
 			},
+			"is_shared_oauth_callback_enabled": schema.BoolAttribute{
+				Description: "When true, the gateway worker uses the shared Cloudflare-owned OAuth callback endpoint as the redirect_uri for upstream on-behalf OAuth, instead of the customer portal hostname. New public server creates default to true; existing servers default to false from migration until explicitly updated. Effective behavior is gated by the gateway worker's per-env rollout mode KV key.",
+				Optional:    true,
+			},
 			"updated_prompts": schema.ListNestedAttribute{
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -104,12 +108,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					},
 				},
 			},
-			"is_shared_oauth_callback_enabled": schema.BoolAttribute{
-				Description: "When true, the gateway worker uses the shared Cloudflare-owned OAuth callback endpoint as the redirect_uri for upstream on-behalf OAuth, instead of the customer portal hostname. Defaults to false (off); opt in per server by setting true. Effective behavior is gated by the gateway worker's per-env rollout mode KV key.",
-				Computed:    true,
-				Optional:    true,
-				Default:     booldefault.StaticBool(false),
-			},
 			"secure_web_gateway": schema.BoolAttribute{
 				Description: "Route outbound traffic to this MCP server through Zero Trust Secure Web Gateway",
 				Computed:    true,
@@ -117,42 +115,39 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Default:     booldefault.StaticBool(false),
 			},
 			"created_at": schema.StringAttribute{
-				Computed:   true,
-				CustomType: timetypes.RFC3339Type{},
+				Computed:      true,
+				CustomType:    timetypes.RFC3339Type{},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"created_by": schema.StringAttribute{
-				Computed: true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"error": schema.StringAttribute{
-				Computed: true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"last_successful_sync": schema.StringAttribute{
 				Computed:   true,
 				CustomType: timetypes.RFC3339Type{},
 			},
 			"last_synced": schema.StringAttribute{
-				Computed:   true,
-				CustomType: timetypes.RFC3339Type{},
+				Computed:      true,
+				CustomType:    timetypes.RFC3339Type{},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"modified_at": schema.StringAttribute{
-				Computed:   true,
-				CustomType: timetypes.RFC3339Type{},
+				Computed:      true,
+				CustomType:    timetypes.RFC3339Type{},
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"modified_by": schema.StringAttribute{
-				Computed: true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"status": schema.StringAttribute{
-				Description: "Current sync state of the server\nAvailable values: \"waiting\", \"ready\", \"stale\", \"error\".",
-				Computed:    true,
-				Validators: []validator.String{
-					stringvalidator.OneOfCaseInsensitive(
-						"waiting",
-						"ready",
-						"stale",
-						"error",
-					),
-				},
-				Default: stringdefault.StaticString("waiting"),
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"prompts": schema.ListAttribute{
 				Computed:   true,
