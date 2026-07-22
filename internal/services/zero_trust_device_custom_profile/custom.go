@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -22,13 +23,19 @@ func (r *ZeroTrustDeviceCustomProfileResource) ModifyPlan(ctx context.Context, r
 		// when the user didn't set them (config is null). This prevents cosmetic
 		// "(known after apply)" noise on the initial plan.
 		var plan ZeroTrustDeviceCustomProfileModel
+		var diags diag.Diagnostics
 		resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		plan.Exclude = normalizeSplitTunnelList(ctx, plan.Exclude, customfield.NullObjectList[ZeroTrustDeviceCustomProfileExcludeModel](ctx))
-		plan.Include = normalizeSplitTunnelList(ctx, plan.Include, customfield.NullObjectList[ZeroTrustDeviceCustomProfileIncludeModel](ctx))
+		plan.Exclude, diags = normalizeSplitTunnelList(ctx, plan.Exclude, customfield.NullObjectList[ZeroTrustDeviceCustomProfileExcludeModel](ctx))
+		resp.Diagnostics.Append(diags...)
+		plan.Include, diags = normalizeSplitTunnelList(ctx, plan.Include, customfield.NullObjectList[ZeroTrustDeviceCustomProfileIncludeModel](ctx))
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 
 		resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 		return
@@ -65,8 +72,14 @@ func (r *ZeroTrustDeviceCustomProfileResource) ModifyPlan(ctx context.Context, r
 	// are Optional+Computed. We resolve them to their state values (for
 	// existing entries) or null (for new entries) since the API does not
 	// compute these fields.
-	plan.Exclude = normalizeSplitTunnelList(ctx, plan.Exclude, state.Exclude)
-	plan.Include = normalizeSplitTunnelList(ctx, plan.Include, state.Include)
+	var diags diag.Diagnostics
+	plan.Exclude, diags = normalizeSplitTunnelList(ctx, plan.Exclude, state.Exclude)
+	resp.Diagnostics.Append(diags...)
+	plan.Include, diags = normalizeSplitTunnelList(ctx, plan.Include, state.Include)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
 }
@@ -80,18 +93,26 @@ type splitTunnelEntry interface {
 // list elements. For each element, if address/host/description is unknown, it is
 // resolved to the corresponding state value (for existing entries at the same
 // index) or null (for new entries beyond the state length).
+//
+// NOTE: Matching is index-based (plan element i ↔ state element i), not
+// identity-based. If a user reorders entries in config, the wrong state values
+// may be applied for one plan-apply cycle; the next read corrects them. This is
+// acceptable because the API does not compute these fields — the worst case is
+// a single extra apply with null values that get overwritten by the API response.
 func normalizeSplitTunnelList[T splitTunnelEntry](
 	ctx context.Context,
 	planList customfield.NestedObjectList[T],
 	stateList customfield.NestedObjectList[T],
-) customfield.NestedObjectList[T] {
+) (customfield.NestedObjectList[T], diag.Diagnostics) {
+	var diags diag.Diagnostics
+
 	if planList.IsNull() || planList.IsUnknown() {
-		return planList
+		return planList, diags
 	}
 
 	planElements := planList.Elements()
 	if len(planElements) == 0 {
-		return planList
+		return planList, diags
 	}
 
 	stateElements := []attr.Value{}
@@ -113,7 +134,7 @@ func normalizeSplitTunnelList[T splitTunnelEntry](
 		newAttrs := make(map[string]attr.Value, len(attrs))
 		elementChanged := false
 
-		// Get corresponding state element attributes if available.
+		// Get corresponding state element attributes if available (index-based).
 		var stateAttrs map[string]attr.Value
 		if i < len(stateElements) {
 			if stateObj, ok := stateElements[i].(types.Object); ok && !stateObj.IsNull() && !stateObj.IsUnknown() {
@@ -125,6 +146,8 @@ func normalizeSplitTunnelList[T splitTunnelEntry](
 			if val.IsUnknown() {
 				elementChanged = true
 				// Try to use state value; fall back to null.
+				// NOTE: all nested attributes in exclude/include models are strings;
+				// update this fallback if non-string Optional+Computed fields are added.
 				if stateAttrs != nil {
 					if sv, exists := stateAttrs[key]; exists {
 						newAttrs[key] = sv
@@ -141,8 +164,9 @@ func normalizeSplitTunnelList[T splitTunnelEntry](
 
 		if elementChanged {
 			changed = true
-			newObj, diags := types.ObjectValue(obj.AttributeTypes(ctx), newAttrs)
-			if diags.HasError() {
+			newObj, d := types.ObjectValue(obj.AttributeTypes(ctx), newAttrs)
+			diags.Append(d...)
+			if d.HasError() {
 				// If we can't construct the normalized object, keep original.
 				normalized[i] = elem
 			} else {
@@ -154,12 +178,13 @@ func normalizeSplitTunnelList[T splitTunnelEntry](
 	}
 
 	if !changed {
-		return planList
+		return planList, diags
 	}
 
-	result, diags := customfield.NewObjectListFromAttributes[T](ctx, normalized)
-	if diags.HasError() {
-		return planList
+	result, d := customfield.NewObjectListFromAttributes[T](ctx, normalized)
+	diags.Append(d...)
+	if d.HasError() {
+		return planList, diags
 	}
-	return result
+	return result, diags
 }

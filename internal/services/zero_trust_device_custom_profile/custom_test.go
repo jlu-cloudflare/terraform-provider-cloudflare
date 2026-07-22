@@ -25,7 +25,10 @@ func TestNormalizeSplitTunnelList_ResolvesUnknownToNull(t *testing.T) {
 	// State list is empty (new element, no prior state).
 	stateList := customfield.NullObjectList[ZeroTrustDeviceCustomProfileExcludeModel](ctx)
 
-	result := normalizeSplitTunnelList(ctx, planList, stateList)
+	result, diags := normalizeSplitTunnelList(ctx, planList, stateList)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 
 	if result.IsNull() || result.IsUnknown() {
 		t.Fatal("expected non-null, non-unknown result")
@@ -38,7 +41,7 @@ func TestNormalizeSplitTunnelList_ResolvesUnknownToNull(t *testing.T) {
 
 	// Extract the normalized entry.
 	var entries []ZeroTrustDeviceCustomProfileExcludeModel
-	diags := result.ElementsAs(ctx, &entries, false)
+	diags = result.ElementsAs(ctx, &entries, false)
 	if diags.HasError() {
 		t.Fatalf("failed to extract entries: %v", diags)
 	}
@@ -78,10 +81,13 @@ func TestNormalizeSplitTunnelList_PreservesStateForExistingEntries(t *testing.T)
 	}
 	stateList := customfield.NewObjectListMust(ctx, stateEntries)
 
-	result := normalizeSplitTunnelList(ctx, planList, stateList)
+	result, diags := normalizeSplitTunnelList(ctx, planList, stateList)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 
 	var entries []ZeroTrustDeviceCustomProfileExcludeModel
-	diags := result.ElementsAs(ctx, &entries, false)
+	diags = result.ElementsAs(ctx, &entries, false)
 	if diags.HasError() {
 		t.Fatalf("failed to extract entries: %v", diags)
 	}
@@ -126,10 +132,13 @@ func TestNormalizeSplitTunnelList_MixedNewAndExistingEntries(t *testing.T) {
 	}
 	stateList := customfield.NewObjectListMust(ctx, stateEntries)
 
-	result := normalizeSplitTunnelList(ctx, planList, stateList)
+	result, diags := normalizeSplitTunnelList(ctx, planList, stateList)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 
 	var entries []ZeroTrustDeviceCustomProfileExcludeModel
-	diags := result.ElementsAs(ctx, &entries, false)
+	diags = result.ElementsAs(ctx, &entries, false)
 	if diags.HasError() {
 		t.Fatalf("failed to extract entries: %v", diags)
 	}
@@ -165,12 +174,18 @@ func TestNormalizeSplitTunnelList_NullAndUnknownListsPassThrough(t *testing.T) {
 	unknownList := customfield.UnknownObjectList[ZeroTrustDeviceCustomProfileExcludeModel](ctx)
 	emptyState := customfield.NullObjectList[ZeroTrustDeviceCustomProfileExcludeModel](ctx)
 
-	result := normalizeSplitTunnelList(ctx, nullList, emptyState)
+	result, diags := normalizeSplitTunnelList(ctx, nullList, emptyState)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 	if !result.IsNull() {
 		t.Error("expected null list to pass through")
 	}
 
-	result = normalizeSplitTunnelList(ctx, unknownList, emptyState)
+	result, diags = normalizeSplitTunnelList(ctx, unknownList, emptyState)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 	if !result.IsUnknown() {
 		t.Error("expected unknown list to pass through")
 	}
@@ -190,7 +205,10 @@ func TestNormalizeSplitTunnelList_NoChangeWhenAllKnown(t *testing.T) {
 	planList := customfield.NewObjectListMust(ctx, planEntries)
 	stateList := customfield.NullObjectList[ZeroTrustDeviceCustomProfileExcludeModel](ctx)
 
-	result := normalizeSplitTunnelList(ctx, planList, stateList)
+	result, diags := normalizeSplitTunnelList(ctx, planList, stateList)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 
 	// Should return the original list unchanged.
 	if !result.Equal(planList) {
