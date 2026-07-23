@@ -92,6 +92,17 @@ func (r *ZeroTrustAccessPolicyResource) Create(ctx context.Context, req resource
 	}
 	data = &env.Result
 
+	var planData *ZeroTrustAccessPolicyModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &planData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(normalizeReadZeroTrustAccessPolicyAPIData(ctx, data, planData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -141,6 +152,17 @@ func (r *ZeroTrustAccessPolicyResource) Update(ctx context.Context, req resource
 	}
 	data = &env.Result
 
+	var planData *ZeroTrustAccessPolicyModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &planData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(normalizeReadZeroTrustAccessPolicyAPIData(ctx, data, planData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -180,6 +202,17 @@ func (r *ZeroTrustAccessPolicyResource) Read(ctx context.Context, req resource.R
 		return
 	}
 	data = &env.Result
+
+	var stateData *ZeroTrustAccessPolicyModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &stateData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(normalizeReadZeroTrustAccessPolicyAPIData(ctx, data, stateData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
