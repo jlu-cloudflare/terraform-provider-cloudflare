@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/kv"
@@ -14,6 +15,7 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
+	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -64,21 +66,22 @@ func (r *WorkersKVResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	dataBytes, contentType, err := data.MarshalMultipart()
+	multipartData, contentType, err := data.MarshalMultipart()
 	if err != nil {
-		resp.Diagnostics.AddError("failed to serialize multipart http request", err.Error())
+		resp.Diagnostics.AddError("failed to marshal multipart request", err.Error())
 		return
 	}
+
 	res := new(http.Response)
 	env := WorkersKVResultEnvelope{*data}
 	_, err = r.client.KV.Namespaces.Values.Update(
 		ctx,
 		data.NamespaceID.ValueString(),
-		data.KeyName.ValueString(),
+		url.PathEscape(data.KeyName.ValueString()),
 		kv.NamespaceValueUpdateParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
-		option.WithRequestBody(contentType, dataBytes),
+		option.WithRequestBody(contentType, multipartData),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -115,21 +118,22 @@ func (r *WorkersKVResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	dataBytes, contentType, err := data.MarshalMultipart()
+	multipartData, contentType, err := data.MarshalMultipart()
 	if err != nil {
-		resp.Diagnostics.AddError("failed to serialize multipart http request", err.Error())
+		resp.Diagnostics.AddError("failed to marshal multipart request", err.Error())
 		return
 	}
+
 	res := new(http.Response)
 	env := WorkersKVResultEnvelope{*data}
 	_, err = r.client.KV.Namespaces.Values.Update(
 		ctx,
 		data.NamespaceID.ValueString(),
-		data.KeyName.ValueString(),
+		url.PathEscape(data.KeyName.ValueString()),
 		kv.NamespaceValueUpdateParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
-		option.WithRequestBody(contentType, dataBytes),
+		option.WithRequestBody(contentType, multipartData),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -162,7 +166,7 @@ func (r *WorkersKVResource) Read(ctx context.Context, req resource.ReadRequest, 
 	_, err := r.client.KV.Namespaces.Values.Get(
 		ctx,
 		data.NamespaceID.ValueString(),
-		data.KeyName.ValueString(),
+		url.PathEscape(data.KeyName.ValueString()),
 		kv.NamespaceValueGetParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
@@ -178,6 +182,37 @@ func (r *WorkersKVResource) Read(ctx context.Context, req resource.ReadRequest, 
 		resp.Diagnostics.AddError("failed to make http request", err.Error())
 		return
 	}
+	bytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to read response body", err.Error())
+		return
+	}
+	data.Value = types.StringValue(string(bytes))
+
+	metadataRes := new(http.Response)
+	_, err = r.client.KV.Namespaces.Metadata.Get(
+		ctx,
+		data.NamespaceID.ValueString(),
+		url.PathEscape(data.KeyName.ValueString()),
+		kv.NamespaceMetadataGetParams{
+			AccountID: cloudflare.F(data.AccountID.ValueString()),
+		},
+		option.WithResponseBodyInto(&metadataRes),
+		option.WithMiddleware(logging.Middleware(ctx)),
+	)
+	if err == nil && metadataRes != nil && metadataRes.StatusCode == 200 {
+		metadataBytes, _ := io.ReadAll(metadataRes.Body)
+		if len(metadataBytes) > 0 {
+			var envelope struct {
+				Result interface{} `json:"result"`
+			}
+			if err := apijson.Unmarshal(metadataBytes, &envelope); err == nil && envelope.Result != nil {
+				resultBytes, _ := apijson.Marshal(envelope.Result)
+				data.Metadata = jsontypes.NewNormalizedValue(string(resultBytes))
+			}
+		}
+	}
+
 	data.ID = data.KeyName
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -195,7 +230,7 @@ func (r *WorkersKVResource) Delete(ctx context.Context, req resource.DeleteReque
 	_, err := r.client.KV.Namespaces.Values.Delete(
 		ctx,
 		data.NamespaceID.ValueString(),
-		data.KeyName.ValueString(),
+		url.PathEscape(data.KeyName.ValueString()),
 		kv.NamespaceValueDeleteParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
@@ -236,7 +271,7 @@ func (r *WorkersKVResource) ImportState(ctx context.Context, req resource.Import
 	_, err := r.client.KV.Namespaces.Values.Get(
 		ctx,
 		path_namespace_id,
-		path_key_name,
+		url.PathEscape(path_key_name),
 		kv.NamespaceValueGetParams{
 			AccountID: cloudflare.F(path_account_id),
 		},
@@ -248,11 +283,32 @@ func (r *WorkersKVResource) ImportState(ctx context.Context, req resource.Import
 		return
 	}
 	bytes, _ := io.ReadAll(res.Body)
-	err = apijson.Unmarshal(bytes, &data)
-	if err != nil {
-		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
-		return
+	data.Value = types.StringValue(string(bytes))
+
+	metadataRes := new(http.Response)
+	_, err = r.client.KV.Namespaces.Metadata.Get(
+		ctx,
+		path_namespace_id,
+		url.PathEscape(path_key_name),
+		kv.NamespaceMetadataGetParams{
+			AccountID: cloudflare.F(path_account_id),
+		},
+		option.WithResponseBodyInto(&metadataRes),
+		option.WithMiddleware(logging.Middleware(ctx)),
+	)
+	if err == nil && metadataRes != nil && metadataRes.StatusCode == 200 {
+		metadataBytes, _ := io.ReadAll(metadataRes.Body)
+		if len(metadataBytes) > 0 {
+			var envelope struct {
+				Result interface{} `json:"result"`
+			}
+			if err := apijson.Unmarshal(metadataBytes, &envelope); err == nil && envelope.Result != nil {
+				resultBytes, _ := apijson.Marshal(envelope.Result)
+				data.Metadata = jsontypes.NewNormalizedValue(string(resultBytes))
+			}
+		}
 	}
+
 	data.ID = data.KeyName
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

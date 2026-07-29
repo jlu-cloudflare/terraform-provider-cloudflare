@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/option"
@@ -67,7 +68,7 @@ func (d *WorkersKVDataSource) Read(ctx context.Context, req datasource.ReadReque
 	_, err := d.client.KV.Namespaces.Values.Get(
 		ctx,
 		data.NamespaceID.ValueString(),
-		data.KeyName.ValueString(),
+		url.PathEscape(data.KeyName.ValueString()),
 		params,
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),

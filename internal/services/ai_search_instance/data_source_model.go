@@ -19,7 +19,7 @@ type AISearchInstanceResultDataSourceEnvelope struct {
 
 type AISearchInstanceDataSourceModel struct {
 	ID                   types.String                                                                  `tfsdk:"id" path:"id,computed_optional"`
-	AccountID            types.String                                                                  `tfsdk:"account_id" path:"account_id,required"`
+	AccountID            types.String                                                                  `tfsdk:"account_id" path:"account_id,optional"`
 	AIGatewayID          types.String                                                                  `tfsdk:"ai_gateway_id" json:"ai_gateway_id,computed"`
 	AISearchModel        types.String                                                                  `tfsdk:"aisearch_model" json:"ai_search_model,computed"`
 	Cache                types.Bool                                                                    `tfsdk:"cache" json:"cache,computed"`
@@ -160,6 +160,7 @@ type AISearchInstanceSourceParamsDataSourceModel struct {
 type AISearchInstanceSourceParamsWebCrawlerDataSourceModel struct {
 	ParseOptions customfield.NestedObject[AISearchInstanceSourceParamsWebCrawlerParseOptionsDataSourceModel] `tfsdk:"parse_options" json:"parse_options,computed"`
 	ParseType    types.String                                                                                `tfsdk:"parse_type" json:"parse_type,computed"`
+	StoreOptions customfield.NestedObject[AISearchInstanceSourceParamsWebCrawlerStoreOptionsDataSourceModel] `tfsdk:"store_options" json:"store_options,computed"`
 }
 
 type AISearchInstanceSourceParamsWebCrawlerParseOptionsDataSourceModel struct {
@@ -173,6 +174,12 @@ type AISearchInstanceSourceParamsWebCrawlerParseOptionsDataSourceModel struct {
 type AISearchInstanceSourceParamsWebCrawlerParseOptionsContentSelectorDataSourceModel struct {
 	Path     types.String `tfsdk:"path" json:"path,computed"`
 	Selector types.String `tfsdk:"selector" json:"selector,computed"`
+}
+
+type AISearchInstanceSourceParamsWebCrawlerStoreOptionsDataSourceModel struct {
+	StorageID      types.String `tfsdk:"storage_id" json:"storage_id,computed"`
+	R2Jurisdiction types.String `tfsdk:"r2_jurisdiction" json:"r2_jurisdiction,computed"`
+	StorageType    types.String `tfsdk:"storage_type" json:"storage_type,computed"`
 }
 
 type AISearchInstanceFindOneByDataSourceModel struct {

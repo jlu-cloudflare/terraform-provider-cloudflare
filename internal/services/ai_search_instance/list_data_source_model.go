@@ -18,7 +18,7 @@ type AISearchInstancesResultListDataSourceEnvelope struct {
 }
 
 type AISearchInstancesDataSourceModel struct {
-	AccountID        types.String                                                         `tfsdk:"account_id" path:"account_id,required"`
+	AccountID        types.String                                                         `tfsdk:"account_id" path:"account_id,optional"`
 	Namespace        types.String                                                         `tfsdk:"namespace" query:"namespace,optional"`
 	Search           types.String                                                         `tfsdk:"search" query:"search,optional"`
 	OrderBy          types.String                                                         `tfsdk:"order_by" query:"order_by,computed_optional"`
@@ -160,6 +160,7 @@ type AISearchInstancesSourceParamsDataSourceModel struct {
 type AISearchInstancesSourceParamsWebCrawlerDataSourceModel struct {
 	ParseOptions customfield.NestedObject[AISearchInstancesSourceParamsWebCrawlerParseOptionsDataSourceModel] `tfsdk:"parse_options" json:"parse_options,computed"`
 	ParseType    types.String                                                                                 `tfsdk:"parse_type" json:"parse_type,computed"`
+	StoreOptions customfield.NestedObject[AISearchInstancesSourceParamsWebCrawlerStoreOptionsDataSourceModel] `tfsdk:"store_options" json:"store_options,computed"`
 }
 
 type AISearchInstancesSourceParamsWebCrawlerParseOptionsDataSourceModel struct {
@@ -173,4 +174,10 @@ type AISearchInstancesSourceParamsWebCrawlerParseOptionsDataSourceModel struct {
 type AISearchInstancesSourceParamsWebCrawlerParseOptionsContentSelectorDataSourceModel struct {
 	Path     types.String `tfsdk:"path" json:"path,computed"`
 	Selector types.String `tfsdk:"selector" json:"selector,computed"`
+}
+
+type AISearchInstancesSourceParamsWebCrawlerStoreOptionsDataSourceModel struct {
+	StorageID      types.String `tfsdk:"storage_id" json:"storage_id,computed"`
+	R2Jurisdiction types.String `tfsdk:"r2_jurisdiction" json:"r2_jurisdiction,computed"`
+	StorageType    types.String `tfsdk:"storage_type" json:"storage_type,computed"`
 }

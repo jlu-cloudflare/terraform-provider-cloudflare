@@ -30,7 +30,7 @@ type ZeroTrustDEXTestDataSourceModel struct {
 	TestID         types.String                                                                `tfsdk:"test_id" json:"test_id,computed"`
 	Updated        timetypes.RFC3339                                                           `tfsdk:"updated" json:"updated,computed" format:"date-time"`
 	Data           customfield.NestedObject[ZeroTrustDEXTestDataDataSourceModel]               `tfsdk:"data" json:"data,computed"`
-	TargetPolicies customfield.NestedObjectList[ZeroTrustDEXTestTargetPoliciesDataSourceModel] `tfsdk:"target_policies" json:"target_policies,computed"`
+	TargetPolicies customfield.NestedObjectList[ZeroTrustDEXTestTargetPoliciesDataSourceModel] `tfsdk:"target_policies" json:"target_policies,computed_optional"`
 	Filter         *ZeroTrustDEXTestFindOneByDataSourceModel                                   `tfsdk:"filter"`
 }
 

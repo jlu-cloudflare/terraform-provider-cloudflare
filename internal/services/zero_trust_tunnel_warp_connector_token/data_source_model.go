@@ -12,7 +12,7 @@ import (
 )
 
 type ZeroTrustTunnelWARPConnectorTokenResultDataSourceEnvelope struct {
-	Result ZeroTrustTunnelWARPConnectorTokenDataSourceModel `json:"result,computed"`
+	Result types.String `json:"result,computed"`
 }
 
 type ZeroTrustTunnelWARPConnectorTokenDataSourceModel struct {

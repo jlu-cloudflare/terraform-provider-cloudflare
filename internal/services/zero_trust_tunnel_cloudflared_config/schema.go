@@ -5,6 +5,7 @@ package zero_trust_tunnel_cloudflared_config
 import (
 	"context"
 
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -20,6 +21,7 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustTunnelCloudflaredConfig
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Cloudflare One Connector: cloudflared Read",
@@ -48,7 +50,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"config": schema.SingleNestedAttribute{
 				Description: "The tunnel configuration and ingress rules.",
+				Computed:    true,
 				Optional:    true,
+				CustomType:  customfield.NewNestedObjectType[ZeroTrustTunnelCloudflaredConfigConfigModel](ctx),
 				Attributes: map[string]schema.Attribute{
 					"ingress": schema.ListNestedAttribute{
 						Description: "List of public hostname definitions. At least one ingress rule needs to be defined for the tunnel.",
@@ -57,7 +61,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 							Attributes: map[string]schema.Attribute{
 								"hostname": schema.StringAttribute{
 									Description: "Public hostname for this service.",
-									Required:    true,
+									Optional:    true,
 								},
 								"service": schema.StringAttribute{
 									Description: "Protocol and address of destination server. Supported protocols: http://, https://, unix://, tcp://, ssh://, rdp://, unix+tls://, smb://. Alternatively can return a HTTP status code http_status:[code] e.g. 'http_status:404'.",
@@ -239,6 +243,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"source": schema.StringAttribute{
 				Description: "Indicates if this is a locally or remotely configured tunnel. If `local`, manage the tunnel using a YAML file on the origin machine. If `cloudflare`, manage the tunnel's configuration on the Zero Trust dashboard.\nAvailable values: \"local\", \"cloudflare\".",
 				Computed:    true,
+				Optional:    true,
 				Validators: []validator.String{
 					stringvalidator.OneOfCaseInsensitive("local", "cloudflare"),
 				},

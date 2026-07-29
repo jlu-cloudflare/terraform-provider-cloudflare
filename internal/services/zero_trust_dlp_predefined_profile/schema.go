@@ -23,6 +23,7 @@ var _ resource.ResourceWithConfigValidators = (*ZeroTrustDLPPredefinedProfileRes
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Zero Trust Read",
@@ -72,7 +73,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"entries": schema.ListNestedAttribute{
 				Computed:           true,
 				Optional:           true,
-				DeprecationMessage: "This attribute is deprecated.",
+				DeprecationMessage: "This attribute is deprecated. Use enabled_entries instead.",
 				CustomType:         customfield.NewNestedObjectListType[ZeroTrustDLPPredefinedProfileEntriesModel](ctx),
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{

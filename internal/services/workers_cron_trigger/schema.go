@@ -4,8 +4,6 @@ package workers_cron_trigger
 
 import (
 	"context"
-
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -17,6 +15,7 @@ var _ resource.ResourceWithConfigValidators = (*WorkersCronTriggerResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Workers Scripts Read",
@@ -39,29 +38,12 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
-			"body": schema.ListNestedAttribute{
+			"schedules": schema.ListNestedAttribute{
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"cron": schema.StringAttribute{
 							Required: true,
-						},
-						"created_on": schema.StringAttribute{
-							Computed: true,
-						},
-						"modified_on": schema.StringAttribute{
-							Computed: true,
-						},
-					},
-				},
-			},
-			"schedules": schema.ListNestedAttribute{
-				Computed:   true,
-				CustomType: customfield.NewNestedObjectListType[WorkersCronTriggerSchedulesModel](ctx),
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"cron": schema.StringAttribute{
-							Computed: true,
 						},
 						"created_on": schema.StringAttribute{
 							Computed: true,

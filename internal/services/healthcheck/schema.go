@@ -25,6 +25,7 @@ var _ resource.ResourceWithConfigValidators = (*HealthcheckResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Health Checks Read",
@@ -52,7 +53,9 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"description": schema.StringAttribute{
 				Description: "A human-readable description of the health check.",
+				Computed:    true,
 				Optional:    true,
+				Default:     stringdefault.StaticString(""),
 			},
 			"check_regions": schema.ListAttribute{
 				Description: "A list of regions from which to run health checks. Null means Cloudflare will pick a default region.",

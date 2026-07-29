@@ -22,7 +22,7 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.StringAttribute{
-				Required: true,
+				Optional:    true,
 			},
 			"namespace": schema.StringAttribute{
 				Description: "Filter by namespace.",
@@ -186,12 +186,11 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 						"embedding_model": schema.StringAttribute{
-							Description: `Available values: "@cf/qwen/qwen3-embedding-0.6b", "@cf/qwen/qwen3-vl-embedding-2b", "@cf/baai/bge-m3", "@cf/baai/bge-large-en-v1.5", "@cf/google/embeddinggemma-300m", "google-ai-studio/gemini-embedding-001", "google-ai-studio/gemini-embedding-2-preview", "google-ai-studio/gemini-embedding-2", "openai/text-embedding-3-small", "openai/text-embedding-3-large", "".`,
+							Description: `Available values: "@cf/qwen/qwen3-embedding-0.6b", "@cf/baai/bge-m3", "@cf/baai/bge-large-en-v1.5", "@cf/google/embeddinggemma-300m", "google-ai-studio/gemini-embedding-001", "google-ai-studio/gemini-embedding-2-preview", "google-ai-studio/gemini-embedding-2", "openai/text-embedding-3-small", "openai/text-embedding-3-large", "".`,
 							Computed:    true,
 							Validators: []validator.String{
 								stringvalidator.OneOfCaseInsensitive(
 									"@cf/qwen/qwen3-embedding-0.6b",
-									"@cf/qwen/qwen3-vl-embedding-2b",
 									"@cf/baai/bge-m3",
 									"@cf/baai/bge-large-en-v1.5",
 									"@cf/google/embeddinggemma-300m",
@@ -532,10 +531,33 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 											},
 										},
 										"parse_type": schema.StringAttribute{
-											Description: `Available values: "sitemap", "crawl".`,
+											Description: `Available values: "sitemap", "feed-rss", "crawl".`,
 											Computed:    true,
 											Validators: []validator.String{
-												stringvalidator.OneOfCaseInsensitive("sitemap", "crawl"),
+												stringvalidator.OneOfCaseInsensitive(
+													"sitemap",
+													"feed-rss",
+													"crawl",
+												),
+											},
+										},
+										"store_options": schema.SingleNestedAttribute{
+											Computed:   true,
+											CustomType: customfield.NewNestedObjectType[AISearchInstancesSourceParamsWebCrawlerStoreOptionsDataSourceModel](ctx),
+											Attributes: map[string]schema.Attribute{
+												"storage_id": schema.StringAttribute{
+													Computed: true,
+												},
+												"r2_jurisdiction": schema.StringAttribute{
+													Computed: true,
+												},
+												"storage_type": schema.StringAttribute{
+													Description: `Available values: "r2".`,
+													Computed:    true,
+													Validators: []validator.String{
+														stringvalidator.OneOfCaseInsensitive("r2"),
+													},
+												},
 											},
 										},
 									},
