@@ -11,6 +11,7 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/option"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 )
@@ -85,6 +86,11 @@ func (d *WorkerVersionDataSource) Read(ctx context.Context, req datasource.ReadR
 	}
 	data = &env.Result
 	data.ID = data.VersionID
+
+	// Set assets to null if not returned by API (computed field)
+	if data.Assets.IsUnknown() {
+		data.Assets = data.Assets.NullValue(ctx).(customfield.NestedObject[WorkerVersionAssetsDataSourceModel])
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -18,7 +18,7 @@ type ZeroTrustDEXTestsResultListDataSourceEnvelope struct {
 }
 
 type ZeroTrustDEXTestsDataSourceModel struct {
-	AccountID types.String                                                         `tfsdk:"account_id" path:"account_id,required"`
+	AccountID types.String                                                         `tfsdk:"account_id" path:"account_id,optional"`
 	Kind      types.String                                                         `tfsdk:"kind" query:"kind,optional"`
 	TestName  types.String                                                         `tfsdk:"test_name" query:"testName,optional"`
 	MaxItems  types.Int64                                                          `tfsdk:"max_items"`
@@ -48,7 +48,7 @@ type ZeroTrustDEXTestsResultDataSourceModel struct {
 	Name           types.String                                                                 `tfsdk:"name" json:"name,computed"`
 	Created        timetypes.RFC3339                                                            `tfsdk:"created" json:"created,computed" format:"date-time"`
 	Description    types.String                                                                 `tfsdk:"description" json:"description,computed"`
-	TargetPolicies customfield.NestedObjectList[ZeroTrustDEXTestsTargetPoliciesDataSourceModel] `tfsdk:"target_policies" json:"target_policies,computed"`
+	TargetPolicies customfield.NestedObjectList[ZeroTrustDEXTestsTargetPoliciesDataSourceModel] `tfsdk:"target_policies" json:"target_policies,computed_optional"`
 	Targeted       types.Bool                                                                   `tfsdk:"targeted" json:"targeted,computed"`
 	TestID         types.String                                                                 `tfsdk:"test_id" json:"test_id,computed"`
 	Updated        timetypes.RFC3339                                                            `tfsdk:"updated" json:"updated,computed" format:"date-time"`

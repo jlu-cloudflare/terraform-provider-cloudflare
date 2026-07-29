@@ -17,7 +17,7 @@ type ZeroTrustDeviceCustomProfilesResultListDataSourceEnvelope struct {
 }
 
 type ZeroTrustDeviceCustomProfilesDataSourceModel struct {
-	AccountID types.String                                                                     `tfsdk:"account_id" path:"account_id,required"`
+	AccountID types.String                                                                     `tfsdk:"account_id" path:"account_id,optional"`
 	MaxItems  types.Int64                                                                      `tfsdk:"max_items"`
 	Result    customfield.NestedObjectList[ZeroTrustDeviceCustomProfilesResultDataSourceModel] `tfsdk:"result"`
 }
@@ -46,7 +46,6 @@ type ZeroTrustDeviceCustomProfilesResultDataSourceModel struct {
 	ExcludeOfficeIPs           types.Bool                                                                                  `tfsdk:"exclude_office_ips" json:"exclude_office_ips,computed"`
 	FallbackDomains            customfield.NestedObjectList[ZeroTrustDeviceCustomProfilesFallbackDomainsDataSourceModel]   `tfsdk:"fallback_domains" json:"fallback_domains,computed"`
 	GatewayUniqueID            types.String                                                                                `tfsdk:"gateway_unique_id" json:"gateway_unique_id,computed"`
-	GlobalAcceleration         customfield.NestedObject[ZeroTrustDeviceCustomProfilesGlobalAccelerationDataSourceModel]    `tfsdk:"global_acceleration" json:"global_acceleration,computed"`
 	Include                    customfield.NestedObjectList[ZeroTrustDeviceCustomProfilesIncludeDataSourceModel]           `tfsdk:"include" json:"include,computed"`
 	LANAllowMinutes            types.Float64                                                                               `tfsdk:"lan_allow_minutes" json:"lan_allow_minutes,computed"`
 	LANAllowSubnetSize         types.Float64                                                                               `tfsdk:"lan_allow_subnet_size" json:"lan_allow_subnet_size,computed"`
@@ -79,13 +78,6 @@ type ZeroTrustDeviceCustomProfilesFallbackDomainsDataSourceModel struct {
 	Suffix      types.String                   `tfsdk:"suffix" json:"suffix,computed"`
 	Description types.String                   `tfsdk:"description" json:"description,computed"`
 	DNSServer   customfield.List[types.String] `tfsdk:"dns_server" json:"dns_server,computed"`
-}
-
-type ZeroTrustDeviceCustomProfilesGlobalAccelerationDataSourceModel struct {
-	APIEndpoints       customfield.List[types.String] `tfsdk:"api_endpoints" json:"api_endpoints,computed"`
-	Enabled            types.Bool                     `tfsdk:"enabled" json:"enabled,computed"`
-	MasqueEndpoints    customfield.List[types.String] `tfsdk:"masque_endpoints" json:"masque_endpoints,computed"`
-	WireguardEndpoints customfield.List[types.String] `tfsdk:"wireguard_endpoints" json:"wireguard_endpoints,computed"`
 }
 
 type ZeroTrustDeviceCustomProfilesIncludeDataSourceModel struct {

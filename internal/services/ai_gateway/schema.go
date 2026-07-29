@@ -26,6 +26,7 @@ var _ resource.ResourceWithConfigValidators = (*AIGatewayResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"AI Gateway Read",
@@ -482,7 +483,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								"id": schema.StringAttribute{
 									Computed: true,
 									Optional: true,
-									Default:  stringdefault.StaticString("a72b47b3"),
+									Default:  stringdefault.StaticString("6fb25042"),
 								},
 								"enabled": schema.BoolAttribute{
 									Computed: true,

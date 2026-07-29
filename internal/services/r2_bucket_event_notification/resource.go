@@ -12,6 +12,7 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7/option"
 	"github.com/cloudflare/cloudflare-go/v7/r2"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
+	"github.com/cloudflare/terraform-provider-cloudflare/internal/consts"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
@@ -75,6 +76,7 @@ func (r *R2BucketEventNotificationResource) Create(ctx context.Context, req reso
 		r2.BucketEventNotificationUpdateParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
+		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -111,6 +113,35 @@ func (r *R2BucketEventNotificationResource) Update(ctx context.Context, req reso
 		return
 	}
 
+	if data.AccountID == state.AccountID &&
+		data.BucketName == state.BucketName &&
+		data.Jurisdiction == state.Jurisdiction &&
+		data.QueueID == state.QueueID &&
+		RulesEqual(data.Rules, state.Rules) {
+		// No changes were detected, preserve planned values (including null for prefix/suffix)
+		data.QueueName = state.QueueName
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+		return
+	}
+
+	// To make this compatible with R2's event notification API, the
+	// existing configuration must be deleted first before applying the plan
+	_, err := r.client.R2.Buckets.EventNotifications.Delete(
+		ctx,
+		data.BucketName.ValueString(),
+		data.QueueID.ValueString(),
+		r2.BucketEventNotificationDeleteParams{
+			AccountID: cloudflare.F(data.AccountID.ValueString()),
+		},
+		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
+		option.WithMiddleware(logging.Middleware(ctx)),
+	)
+	if err != nil {
+		resp.Diagnostics.AddError("failed to make http request", err.Error())
+		return
+	}
+
+	// Start Update
 	dataBytes, err := data.MarshalJSONForUpdate(*state)
 	if err != nil {
 		resp.Diagnostics.AddError("failed to serialize http request", err.Error())
@@ -125,6 +156,7 @@ func (r *R2BucketEventNotificationResource) Update(ctx context.Context, req reso
 		r2.BucketEventNotificationUpdateParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
+		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithRequestBody("application/json", dataBytes),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
@@ -139,6 +171,7 @@ func (r *R2BucketEventNotificationResource) Update(ctx context.Context, req reso
 		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
 		return
 	}
+
 	data = &env.Result
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -162,6 +195,7 @@ func (r *R2BucketEventNotificationResource) Read(ctx context.Context, req resour
 		r2.BucketEventNotificationGetParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
+		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithResponseBodyInto(&res),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
@@ -201,6 +235,7 @@ func (r *R2BucketEventNotificationResource) Delete(ctx context.Context, req reso
 		r2.BucketEventNotificationDeleteParams{
 			AccountID: cloudflare.F(data.AccountID.ValueString()),
 		},
+		option.WithHeader(consts.R2JurisdictionHTTPHeaderName, data.Jurisdiction.ValueString()),
 		option.WithMiddleware(logging.Middleware(ctx)),
 	)
 	if err != nil {

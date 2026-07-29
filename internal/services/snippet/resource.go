@@ -185,6 +185,33 @@ func (r *SnippetResource) Read(ctx context.Context, req resource.ReadRequest, re
 	data = &env.Result
 	data.ID = data.SnippetName
 
+	res = new(http.Response)
+	_, err = r.client.Snippets.Content.Get(
+		ctx,
+		data.SnippetName.ValueString(),
+		snippets.ContentGetParams{
+			ZoneID: cloudflare.F(data.ZoneID.ValueString()),
+		},
+		option.WithResponseBodyInto(&res),
+		option.WithMiddleware(logging.Middleware(ctx)),
+	)
+	if res != nil && res.StatusCode == 404 {
+		resp.Diagnostics.AddWarning("Resource not found", "The resource was not found on the server and will be removed from state.")
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("failed to make http request", err.Error())
+		return
+	}
+	data.Metadata.MainModule = types.StringValue(res.Header.Get("Cf-Entrypoint"))
+	bytes, _ = io.ReadAll(res.Body)
+	err = data.UnmarshalMultipart(bytes, res.Header.Get("Content-Type"))
+	if err != nil {
+		resp.Diagnostics.AddError("failed to deserialize http request", err.Error())
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 

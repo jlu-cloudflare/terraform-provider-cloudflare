@@ -1,21 +1,16 @@
 resource "cloudflare_workers_script" "example_workers_script" {
   account_id = "023e105f4ecef8ad9ca31a8372d0c353"
   script_name = "this-is_my_script-01"
-  metadata = {
-    annotations = {
-      workers_message = "Fixed bug."
-      workers_tag = "v1.0.1"
-    }
-    assets = {
-      config = {
-        headers = <<EOT
+  assets = {
+    config = {
+      headers = <<EOT
         /dashboard/*
         X-Frame-Options: DENY
 
         /static/*
         Access-Control-Allow-Origin: *
         EOT
-        redirects = <<EOT
+      redirects = <<EOT
         /foo /bar 301
         /news/* /blog/:splat
         EOT
@@ -101,7 +96,6 @@ resource "cloudflare_workers_script" "example_workers_script" {
         enabled = true
         head_sampling_rate = 0.1
         persist = true
-        propagation_policy = "authenticated"
       }
     }
     package_dependencies = [{

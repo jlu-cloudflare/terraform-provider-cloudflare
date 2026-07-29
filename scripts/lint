@@ -10,5 +10,6 @@ export GOPRIVATE="${GOPRIVATE:+$GOPRIVATE,}github.com/cloudflare/cloudflare-go,g
 echo "==> Running Go build"
 go build ./...
 
-echo "==> Checking tests compile"
-go test -run=^$ ./...
+echo ""
+echo "==> Running sweeper linter"
+./scripts/lint-sweepers

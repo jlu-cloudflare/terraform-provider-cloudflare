@@ -154,6 +154,9 @@ func (r *ZoneDNSSECResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	// Store prior state for preserving optional field values
+	priorStatus := data.Status
+
 	res := new(http.Response)
 	env := ZoneDNSSECResultEnvelope{*data}
 	_, err := r.client.DNS.DNSSEC.Get(
@@ -182,6 +185,11 @@ func (r *ZoneDNSSECResource) Read(ctx context.Context, req resource.ReadRequest,
 	data = &env.Result
 	data.ID = data.ZoneID
 
+	// Preserve status from prior state if API returns null
+	if data.Status.IsNull() && !priorStatus.IsNull() {
+		data.Status = priorStatus
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -193,6 +201,8 @@ func (r *ZoneDNSSECResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	disableDNSSECRecord(ctx, r, data.ZoneID.ValueString(), resp)
 
 	_, err := r.client.DNS.DNSSEC.Delete(
 		ctx,

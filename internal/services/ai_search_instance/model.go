@@ -16,15 +16,14 @@ type AISearchInstanceResultEnvelope struct {
 type AISearchInstanceModel struct {
 	ID                             types.String                                                        `tfsdk:"id" json:"id,required"`
 	AccountID                      types.String                                                        `tfsdk:"account_id" path:"account_id,required"`
-	Type                           types.String                                                        `tfsdk:"type" json:"type,optional"`
-	HybridSearchEnabled            types.Bool                                                          `tfsdk:"hybrid_search_enabled" json:"hybrid_search_enabled,computed_optional"`
-	AIGatewayID                    types.String                                                        `tfsdk:"ai_gateway_id" json:"ai_gateway_id,optional"`
-	AISearchModel                  types.String                                                        `tfsdk:"aisearch_model" json:"ai_search_model,optional"`
-	ChunkSize                      types.Int64                                                         `tfsdk:"chunk_size" json:"chunk_size,optional"`
-	EmbeddingModel                 types.String                                                        `tfsdk:"embedding_model" json:"embedding_model,optional"`
-	RerankingModel                 types.String                                                        `tfsdk:"reranking_model" json:"reranking_model,optional"`
-	RewriteModel                   types.String                                                        `tfsdk:"rewrite_model" json:"rewrite_model,optional"`
 	Source                         types.String                                                        `tfsdk:"source" json:"source,optional"`
+	Type                           types.String                                                        `tfsdk:"type" json:"type,optional"`
+	AIGatewayID                    types.String                                                        `tfsdk:"ai_gateway_id" json:"ai_gateway_id,computed_optional"`
+	AISearchModel                  types.String                                                        `tfsdk:"aisearch_model" json:"ai_search_model,computed_optional"`
+	ChunkSize                      types.Int64                                                         `tfsdk:"chunk_size" json:"chunk_size,computed_optional"`
+	EmbeddingModel                 types.String                                                        `tfsdk:"embedding_model" json:"embedding_model,computed_optional"`
+	RerankingModel                 types.String                                                        `tfsdk:"reranking_model" json:"reranking_model,computed_optional"`
+	RewriteModel                   types.String                                                        `tfsdk:"rewrite_model" json:"rewrite_model,computed_optional"`
 	SummarizationModel             types.String                                                        `tfsdk:"summarization_model" json:"summarization_model,optional,no_refresh"`
 	SystemPromptAISearch           types.String                                                        `tfsdk:"system_prompt_aisearch" json:"system_prompt_ai_search,optional,no_refresh"`
 	SystemPromptIndexSummarization types.String                                                        `tfsdk:"system_prompt_index_summarization" json:"system_prompt_index_summarization,optional,no_refresh"`
@@ -39,6 +38,7 @@ type AISearchInstanceModel struct {
 	Chunk                          types.Bool                                                          `tfsdk:"chunk" json:"chunk,computed_optional,no_refresh"`
 	ChunkOverlap                   types.Int64                                                         `tfsdk:"chunk_overlap" json:"chunk_overlap,computed_optional"`
 	FusionMethod                   types.String                                                        `tfsdk:"fusion_method" json:"fusion_method,computed_optional"`
+	HybridSearchEnabled            types.Bool                                                          `tfsdk:"hybrid_search_enabled" json:"hybrid_search_enabled,computed_optional"`
 	MaxNumResults                  types.Int64                                                         `tfsdk:"max_num_results" json:"max_num_results,computed_optional"`
 	Paused                         types.Bool                                                          `tfsdk:"paused" json:"paused,computed_optional"`
 	Reranking                      types.Bool                                                          `tfsdk:"reranking" json:"reranking,computed_optional"`
@@ -60,6 +60,7 @@ type AISearchInstanceModel struct {
 	Namespace                      types.String                                                        `tfsdk:"namespace" json:"namespace,computed"`
 	PublicEndpointID               types.String                                                        `tfsdk:"public_endpoint_id" json:"public_endpoint_id,computed"`
 	Status                         types.String                                                        `tfsdk:"status" json:"status,computed"`
+	VectorizeName                  types.String                                                        `tfsdk:"vectorize_name" json:"vectorize_name,computed"`
 }
 
 func (m AISearchInstanceModel) MarshalJSON() (data []byte, err error) {
@@ -140,6 +141,7 @@ type AISearchInstanceSourceParamsModel struct {
 type AISearchInstanceSourceParamsWebCrawlerModel struct {
 	ParseOptions *AISearchInstanceSourceParamsWebCrawlerParseOptionsModel `tfsdk:"parse_options" json:"parse_options,optional"`
 	ParseType    types.String                                             `tfsdk:"parse_type" json:"parse_type,computed_optional"`
+	StoreOptions *AISearchInstanceSourceParamsWebCrawlerStoreOptionsModel `tfsdk:"store_options" json:"store_options,optional"`
 }
 
 type AISearchInstanceSourceParamsWebCrawlerParseOptionsModel struct {
@@ -153,4 +155,10 @@ type AISearchInstanceSourceParamsWebCrawlerParseOptionsModel struct {
 type AISearchInstanceSourceParamsWebCrawlerParseOptionsContentSelectorModel struct {
 	Path     types.String `tfsdk:"path" json:"path,required"`
 	Selector types.String `tfsdk:"selector" json:"selector,required"`
+}
+
+type AISearchInstanceSourceParamsWebCrawlerStoreOptionsModel struct {
+	StorageID      types.String `tfsdk:"storage_id" json:"storage_id,required"`
+	R2Jurisdiction types.String `tfsdk:"r2_jurisdiction" json:"r2_jurisdiction,computed_optional"`
+	StorageType    types.String `tfsdk:"storage_type" json:"storage_type,optional"`
 }

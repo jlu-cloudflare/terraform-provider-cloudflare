@@ -39,7 +39,12 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 			},
 			"account_id": schema.StringAttribute{
 				Description: "Unique identifier linked to an account.",
-				Required:    true,
+				Optional:    true,
+			},
+			"created": schema.StringAttribute{
+				Description: "Date the test was created, in RFC 3339 format.",
+				Computed:    true,
+				CustomType:  timetypes.RFC3339Type{},
 			},
 			"created": schema.StringAttribute{
 				Description: "Date the test was created, in RFC 3339 format.",
@@ -101,6 +106,7 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 			},
 			"target_policies": schema.ListNestedAttribute{
 				Description: "DEX rules targeted by this test",
+				Optional:    true,
 				Computed:    true,
 				CustomType:  customfield.NewNestedObjectListType[ZeroTrustDEXTestTargetPoliciesDataSourceModel](ctx),
 				NestedObject: schema.NestedAttributeObject{

@@ -14,6 +14,7 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/importpath"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/logging"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -153,6 +154,8 @@ func (r *WorkerResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	prior := *data
+
 	res := new(http.Response)
 	env := WorkerResultEnvelope{*data}
 	_, err := r.client.Workers.Beta.Workers.Get(
@@ -180,6 +183,13 @@ func (r *WorkerResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 	data = &env.Result
+
+	// The Cloudflare API does not consistently echo observability.traces.propagation_policy.
+	// Preserve the prior state value when the API omits it to avoid spurious refresh plans.
+	resp.Diagnostics.Append(preservePropagationPolicy(ctx, data, &prior)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -251,9 +261,39 @@ func (r *WorkerResource) ImportState(ctx context.Context, req resource.ImportSta
 	}
 	data = &env.Result
 
+	// On import we have no prior state, so synthesize one with the documented
+	// default for propagation_policy ("authenticated") so the field is not
+	// left null when the API omits it.
+	synthetic := importStateWithPropagationPolicyDefault(ctx)
+	resp.Diagnostics.Append(preservePropagationPolicy(ctx, data, synthetic)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *WorkerResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, _ *resource.ModifyPlanResponse) {
+func (r *WorkerResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	var plan, state *WorkerModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() || plan == nil || state == nil {
+		return
+	}
 
+	// If there are any meaningful changes to user-configurable attributes, do
+	// nothing so that updated_on can legitimately change on update.
+	if (!plan.Name.IsUnknown() && !plan.Name.Equal(state.Name)) ||
+		(!plan.Logpush.IsUnknown() && !plan.Logpush.Equal(state.Logpush)) ||
+		(!plan.Tags.IsUnknown() && !plan.Tags.Equal(state.Tags)) ||
+		(!plan.Observability.IsUnknown() && !plan.Observability.Equal(state.Observability)) ||
+		(!plan.Subdomain.IsUnknown() && !plan.Subdomain.Equal(state.Subdomain)) ||
+		(!plan.TailConsumers.IsUnknown() && !plan.TailConsumers.Equal(state.TailConsumers)) {
+		return
+	}
+
+	// No changes to user-configurable attributes, so copy updated_on timestamp
+	// from state to avoid spurious changes.
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("updated_on"), state.UpdatedOn)...)
+	resp.Diagnostics.Append(resp.Plan.SetAttribute(ctx, path.Root("references"), state.References)...)
 }

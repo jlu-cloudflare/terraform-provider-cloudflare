@@ -30,7 +30,7 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"account_id": schema.StringAttribute{
 				Description: "Unique identifier linked to an account.",
-				Required:    true,
+				Optional:    true,
 			},
 			"kind": schema.StringAttribute{
 				Description: "Filter by test type.\nAvailable values: \"http\", \"traceroute\".",
@@ -108,6 +108,7 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 						},
 						"target_policies": schema.ListNestedAttribute{
 							Description: "DEX rules targeted by this test",
+							Optional:    true,
 							Computed:    true,
 							CustomType:  customfield.NewNestedObjectListType[ZeroTrustDEXTestsTargetPoliciesDataSourceModel](ctx),
 							NestedObject: schema.NestedAttributeObject{

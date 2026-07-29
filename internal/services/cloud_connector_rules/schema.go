@@ -18,6 +18,7 @@ var _ resource.ResourceWithConfigValidators = (*CloudConnectorRulesResource)(nil
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Cloud Connector Read",
@@ -40,7 +41,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							Optional: true,
+							Computed: true,
 						},
 						"description": schema.StringAttribute{
 							Optional: true,
@@ -61,7 +62,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 						},
-						"cloud_connector_rules_provider": schema.StringAttribute{
+						"provider": schema.StringAttribute{
 							Description: "Cloud Provider type\nAvailable values: \"aws_s3\", \"cloudflare_r2\", \"gcp_storage\", \"azure_storage\".",
 							Optional:    true,
 							Validators: []validator.String{

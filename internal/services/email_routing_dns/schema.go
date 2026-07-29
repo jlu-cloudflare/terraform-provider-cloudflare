@@ -22,6 +22,7 @@ var _ resource.ResourceWithConfigValidators = (*EmailRoutingDNSResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Zone Settings Read",
@@ -76,10 +77,6 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"success": schema.BoolAttribute{
 				Description: "Whether the API call was successful.",
-				Computed:    true,
-			},
-			"support_subaddress": schema.BoolAttribute{
-				Description: "Whether subaddressing (plus-addressing) is honored when matching incoming mail against routing rules.",
 				Computed:    true,
 			},
 			"tag": schema.StringAttribute{

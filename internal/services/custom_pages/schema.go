@@ -21,6 +21,7 @@ var _ resource.ResourceWithConfigValidators = (*CustomPagesResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Account Custom Pages Read",
@@ -88,7 +89,8 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"url": schema.StringAttribute{
 				Description: "The URL associated with the custom page.",
-				Required:    true,
+				Optional:    true,
+				Computed:    true,
 			},
 			"created_on": schema.StringAttribute{
 				Computed:   true,

@@ -23,6 +23,7 @@ var _ resource.ResourceWithConfigValidators = (*AccessRuleResource)(nil)
 
 func ResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 500,
 		MarkdownDescription: schemata.Description{
 			Scopes: []string{
 				"Account Firewall Access Rules Read",
@@ -78,6 +79,10 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 					"value": schema.StringAttribute{
 						Description: "The IP address to match. This address will be compared to the IP address of incoming requests.",
 						Optional:    true,
+						Validators: []validator.String{
+							ipv6Validator(),
+							cidrValidator(),
+						},
 					},
 				},
 			},
