@@ -15,8 +15,8 @@ type EmailRoutingSettingsResultEnvelope struct {
 type EmailRoutingSettingsModel struct {
 	ID                types.String      `tfsdk:"id" json:"id,computed"`
 	ZoneID            types.String      `tfsdk:"zone_id" path:"zone_id,required"`
-	Enabled           types.Bool        `tfsdk:"enabled" json:"enabled,optional"`
-	SkipWizard        types.Bool        `tfsdk:"skip_wizard" json:"skip_wizard,optional"`
+	Enabled           types.Bool        `tfsdk:"enabled" json:"enabled,computed"`
+	SkipWizard        types.Bool        `tfsdk:"skip_wizard" json:"skip_wizard,computed"`
 	SupportSubaddress types.Bool        `tfsdk:"support_subaddress" json:"support_subaddress,optional"`
 	Created           timetypes.RFC3339 `tfsdk:"created" json:"created,computed" format:"date-time"`
 	Modified          timetypes.RFC3339 `tfsdk:"modified" json:"modified,computed" format:"date-time"`
