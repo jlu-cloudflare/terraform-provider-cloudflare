@@ -104,28 +104,7 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 			},
 			"filter": schema.SingleNestedAttribute{
 				Optional: true,
-				Attributes: map[string]schema.Attribute{
-					"direction": schema.StringAttribute{
-						Description: "The direction to sort by.\nAvailable values: \"asc\", \"desc\".",
-						Computed:    true,
-						Optional:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOfCaseInsensitive("asc", "desc"),
-						},
-					},
-					"order": schema.StringAttribute{
-						Description: "The field to sort the returned custom CSRs by.\nAvailable values: \"name\", \"account_tag\", \"created_at\".",
-						Computed:    true,
-						Optional:    true,
-						Validators: []validator.String{
-							stringvalidator.OneOfCaseInsensitive(
-								"name",
-								"account_tag",
-								"created_at",
-							),
-						},
-					},
-				},
+				Attributes: map[string]schema.Attribute{},
 			},
 		},
 	}
