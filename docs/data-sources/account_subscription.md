@@ -18,7 +18,6 @@ Accepted Permissions
 ```terraform
 data "cloudflare_account_subscription" "example_account_subscription" {
   account_id = "account_id"
-  zone_id = "zone_id"
 }
 ```
 
@@ -56,5 +55,4 @@ Available values: "free", "lite", "pro", "pro_plus", "business", "enterprise", "
 - `public_name` (String) The full name of the rate plan.
 - `scope` (String) The scope that this rate plan applies to.
 - `sets` (List of String) The list of sets this rate plan applies to. Returns array of strings.
-
 
