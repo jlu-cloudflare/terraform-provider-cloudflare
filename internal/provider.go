@@ -975,8 +975,6 @@ func (p *CloudflareProvider) DataSources(ctx context.Context) []func() datasourc
 		zero_trust_dlp_dataset.NewZeroTrustDLPDatasetsDataSource,
 		zero_trust_dlp_settings.NewZeroTrustDLPSettingsDataSource,
 		zero_trust_dlp_custom_profile.NewZeroTrustDLPCustomProfileDataSource,
-		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicDataSource,
-		zero_trust_dlp_custom_prompt_topic.NewZeroTrustDLPCustomPromptTopicsDataSource,
 		zero_trust_dlp_predefined_profile.NewZeroTrustDLPPredefinedProfileDataSource,
 		zero_trust_dlp_entry.NewZeroTrustDLPEntryDataSource,
 		zero_trust_dlp_entry.NewZeroTrustDLPEntriesDataSource,

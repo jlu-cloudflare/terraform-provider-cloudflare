@@ -46,11 +46,6 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 				Computed:    true,
 				CustomType:  timetypes.RFC3339Type{},
 			},
-			"created": schema.StringAttribute{
-				Description: "Date the test was created, in RFC 3339 format.",
-				Computed:    true,
-				CustomType:  timetypes.RFC3339Type{},
-			},
 			"description": schema.StringAttribute{
 				Description: "Additional details about the test.",
 				Computed:    true,

@@ -53,13 +53,6 @@ func (m *CustomCsrDataSourceModel) toReadParams(_ context.Context) (params custo
 func (m *CustomCsrDataSourceModel) toListParams(_ context.Context) (params custom_csrs.CustomCsrListParams, diags diag.Diagnostics) {
 	params = custom_csrs.CustomCsrListParams{}
 
-	if !m.Filter.Direction.IsNull() {
-		params.Direction = cloudflare.F(custom_csrs.CustomCsrListParamsDirection(m.Filter.Direction.ValueString()))
-	}
-	if !m.Filter.Order.IsNull() {
-		params.Order = cloudflare.F(custom_csrs.CustomCsrListParamsOrder(m.Filter.Order.ValueString()))
-	}
-
 	if !m.AccountID.IsNull() {
 		params.AccountID = cloudflare.F(m.AccountID.ValueString())
 	} else {
@@ -70,6 +63,4 @@ func (m *CustomCsrDataSourceModel) toListParams(_ context.Context) (params custo
 }
 
 type CustomCsrFindOneByDataSourceModel struct {
-	Direction types.String `tfsdk:"direction" query:"direction,computed_optional"`
-	Order     types.String `tfsdk:"order" query:"order,computed_optional"`
 }
