@@ -56,12 +56,13 @@ resource "cloudflare_zero_trust_device_custom_profile" "example_zero_trust_devic
 
 ### Required
 
+- `account_id` (String)
 - `match` (String) The wirefilter expression to match devices. Available values: "identity.email", "identity.groups.id", "identity.groups.name", "identity.groups.email", "identity.service_token_uuid", "identity.saml_attributes", "network", "os.name", "os.version".
 - `name` (String) The name of the device settings profile.
+- `precedence` (Number) The precedence of the policy. Lower values indicate higher precedence. Policies will be evaluated in ascending order of this field.
 
 ### Optional
 
-- `account_id` (String)
 - `allow_mode_switch` (Boolean) Whether to allow the user to switch WARP between modes.
 - `allow_updates` (Boolean) Whether to receive update notifications when a new version of the client is available.
 - `allowed_to_leave` (Boolean) Whether to allow devices to leave the organization.
@@ -73,10 +74,10 @@ resource "cloudflare_zero_trust_device_custom_profile" "example_zero_trust_devic
 - `enabled` (Boolean) Whether the policy will be applied to matching devices.
 - `exclude` (Attributes List) List of routes excluded in the WARP client's tunnel. Both 'exclude' and 'include' cannot be set in the same request. (see [below for nested schema](#nestedatt--exclude))
 - `exclude_office_ips` (Boolean) Whether to add Microsoft IPs to Split Tunnel exclusions.
+- `global_acceleration` (Attributes) Global Acceleration settings for China. When configured, WARP clients connect to the Global Accelerator addresses instead of the default ones. Please contact your account representative to enable this feature on your account. See https://developers.cloudflare.com/china-network/concepts/global-acceleration/. (see [below for nested schema](#nestedatt--global_acceleration))
 - `include` (Attributes List) List of routes included in the WARP client's tunnel. Both 'exclude' and 'include' cannot be set in the same request. (see [below for nested schema](#nestedatt--include))
 - `lan_allow_minutes` (Number) The amount of time in minutes a user is allowed access to their LAN. A value of 0 will allow LAN access until the next WARP reconnection, such as a reboot or a laptop waking from sleep. Note that this field is omitted from the response if null or unset.
 - `lan_allow_subnet_size` (Number) The size of the subnet for the local access network. Note that this field is omitted from the response if null or unset.
-- `precedence` (Number) The precedence of the policy. Lower values indicate higher precedence. Policies will be evaluated in ascending order of this field.
 - `register_interface_ip_with_dns` (Boolean) Determines if the operating system will register WARP's local interface IP with your on-premises DNS server.
 - `sccm_vpn_boundary_support` (Boolean) Determines whether the WARP client indicates to SCCM that it is inside a VPN boundary. (Windows only).
 - `service_mode_v2` (Attributes) (see [below for nested schema](#nestedatt--service_mode_v2))
@@ -116,6 +117,17 @@ Optional:
 - `host` (String) The domain name to exclude from the tunnel. If `host` is present, `address` must not be present.
 
 
+<a id="nestedatt--global_acceleration"></a>
+### Nested Schema for `global_acceleration`
+
+Required:
+
+- `api_endpoints` (List of String) IP:port entries for the API endpoints.
+- `enabled` (Boolean) Global acceleration settings are used only when "enabled".
+- `masque_endpoints` (List of String) IP:port entries for the MASQUE tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.
+- `wireguard_endpoints` (List of String) IP:port entries for the WireGuard tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.
+
+
 <a id="nestedatt--include"></a>
 ### Nested Schema for `include`
 
@@ -129,10 +141,12 @@ Optional:
 <a id="nestedatt--service_mode_v2"></a>
 ### Nested Schema for `service_mode_v2`
 
-Optional:
+Required:
 
-- `mode` (String) The mode to run the WARP client under.
-- `port` (Number) The port number when used with proxy mode.
+- `api_endpoints` (List of String) IP:port entries for the API endpoints.
+- `enabled` (Boolean) Global acceleration settings are used only when "enabled".
+- `masque_endpoints` (List of String) IP:port entries for the MASQUE tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.
+- `wireguard_endpoints` (List of String) IP:port entries for the WireGuard tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.
 
 
 <a id="nestedatt--virtual_networks"></a>

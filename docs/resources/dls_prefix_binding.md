@@ -2,12 +2,17 @@
 page_title: "cloudflare_dls_prefix_binding Resource - Cloudflare"
 subcategory: ""
 description: |-
-  
+  Accepted Permissions
+  DLS: ReadDLS: WriteIP Prefixes: Write
 ---
 
 # cloudflare_dls_prefix_binding (Resource)
 
+Accepted Permissions
 
+- `DLS: Read`
+- `DLS: Write`
+- `IP Prefixes: Write`
 
 ## Example Usage
 
