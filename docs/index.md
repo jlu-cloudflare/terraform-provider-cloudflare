@@ -45,8 +45,8 @@ resource "cloudflare_dns_record" "www" {
 
 ### Optional
 
-- `api_email` (String)
-- `api_key` (String)
-- `api_token` (String)
-- `base_url` (String) Set the base url that the provider connects to.
-- `user_service_key` (String)
+- `api_email` (String) A registered Cloudflare email address. Alternatively, can be configured using the `CLOUDFLARE_EMAIL` environment variable. Required when using `api_key`. Conflicts with `api_token`.
+- `api_key` (String, Sensitive) The API key for operations. Alternatively, can be configured using the `CLOUDFLARE_API_KEY` environment variable. API keys are [now considered legacy by Cloudflare](https://developers.cloudflare.com/fundamentals/api/get-started/keys/#limitations), API tokens should be used instead. Must provide only one of `api_key`, `api_token`, `user_service_key`.
+- `api_token` (String, Sensitive) The API Token for operations. Alternatively, can be configured using the `CLOUDFLARE_API_TOKEN` environment variable. Must provide only one of `api_key`, `api_token`, `user_service_key`.
+- `base_url` (String) Set the base url that the provider connects to. Alternatively, can be configured using the `CLOUDFLARE_BASE_URL` environment variable.
+- `user_service_key` (String, Sensitive) A special Cloudflare API key good for a restricted set of endpoints. Alternatively, can be configured using the `CLOUDFLARE_API_USER_SERVICE_KEY` environment variable. Must provide only one of `api_key`, `api_token`, `user_service_key`.

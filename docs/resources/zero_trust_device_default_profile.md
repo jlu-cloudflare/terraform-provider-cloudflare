@@ -131,12 +131,10 @@ Optional:
 <a id="nestedatt--service_mode_v2"></a>
 ### Nested Schema for `service_mode_v2`
 
-Required:
+Optional:
 
-- `api_endpoints` (List of String) IP:port entries for the API endpoints.
-- `enabled` (Boolean) Global acceleration settings are used only when "enabled".
-- `masque_endpoints` (List of String) IP:port entries for the MASQUE tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.
-- `wireguard_endpoints` (List of String) IP:port entries for the WireGuard tunnel endpoints. Either wireguard_endpoints or masque_endpoints must be provided.
+- `mode` (String) The mode to run the WARP client under.
+- `port` (Number) The port number when used with proxy mode.
 
 
 <a id="nestedatt--virtual_networks"></a>
@@ -164,5 +162,4 @@ Import is supported using the following syntax:
 ```shell
 $ terraform import cloudflare_zero_trust_device_default_profile.example '<account_id>'
 ```
-
 

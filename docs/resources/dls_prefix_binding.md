@@ -3,7 +3,9 @@ page_title: "cloudflare_dls_prefix_binding Resource - Cloudflare"
 subcategory: ""
 description: |-
   Accepted Permissions
-  DLS: ReadDLS: WriteIP Prefixes: Write
+  DLS: Read
+  DLS: Write
+  IP Prefixes: Write
 ---
 
 # cloudflare_dls_prefix_binding (Resource)
@@ -46,5 +48,4 @@ Import is supported using the following syntax:
 ```shell
 $ terraform import cloudflare_dls_prefix_binding.example '<account_id>/<binding_id>'
 ```
-
 

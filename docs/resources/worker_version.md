@@ -46,30 +46,6 @@ resource "cloudflare_worker_version" "example_worker_version" {
   containers = [{
     class_name = "MyDurableObject"
   }]
-  exports = {
-    Admin = {
-      type = "worker"
-      cache = {
-        enabled = true
-      }
-      renamed_to = "renamed_to"
-      state = "created"
-      storage = "sqlite"
-      transfer_from = "transfer_from"
-      transferred_to = "transferred_to"
-    }
-    default = {
-      type = "worker"
-      cache = {
-        enabled = false
-      }
-      renamed_to = "renamed_to"
-      state = "created"
-      storage = "sqlite"
-      transfer_from = "transfer_from"
-      transferred_to = "transferred_to"
-    }
-  }
   limits = {
     cpu_ms = 50
     subrequests = 1000
@@ -499,5 +475,4 @@ Import is supported using the following syntax:
 ```shell
 $ terraform import cloudflare_worker_version.example '<account_id>/<worker_id>/<version_id>'
 ```
-
 
