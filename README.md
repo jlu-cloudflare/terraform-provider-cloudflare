@@ -17,8 +17,8 @@ Add the following to your `main.tf` file:
 terraform {
   required_providers {
     cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 5.21.1"
+      source  = "cloudflare/sdks/cloudflare"
+      version = "~> 5.23.0"
     }
   }
 }
