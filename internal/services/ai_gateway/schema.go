@@ -409,11 +409,11 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"workers_ai_billing_mode": schema.StringAttribute{
-				Description: "Controls how Workers AI inference calls routed through this gateway are billed. Only 'postpaid' is currently supported.\nAvailable values: \"postpaid\".",
+				Description: "Controls how Workers AI inference calls routed through this gateway are billed. 'postpaid' bills the account directly through Workers AI; 'unified' deducts credits via AI Gateway using neuron-based pricing and delegates billing to AI Gateway.\nAvailable values: \"postpaid\", \"unified\".",
 				Computed:    true,
 				Optional:    true,
 				Validators: []validator.String{
-					stringvalidator.OneOfCaseInsensitive("postpaid"),
+					stringvalidator.OneOfCaseInsensitive("postpaid", "unified"),
 				},
 				Default: stringdefault.StaticString("postpaid"),
 			},
@@ -483,7 +483,7 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 								"id": schema.StringAttribute{
 									Computed: true,
 									Optional: true,
-									Default:  stringdefault.StaticString("6092b66a"),
+									Default:  stringdefault.StaticString("4a6d1f72"),
 								},
 								"enabled": schema.BoolAttribute{
 									Computed: true,

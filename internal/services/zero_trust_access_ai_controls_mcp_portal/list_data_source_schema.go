@@ -163,6 +163,19 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 											},
 										},
 									},
+									"authentication_status": schema.StringAttribute{
+										Description: "Whether administrative authentication is required before capabilities can be synced. Manual OAuth is user-managed and has no administrative authentication flow.\nAvailable values: \"not_required\", \"required\", \"connected\", \"stale\", \"manual\".",
+										Computed:    true,
+										Validators: []validator.String{
+											stringvalidator.OneOfCaseInsensitive(
+												"not_required",
+												"required",
+												"connected",
+												"stale",
+												"manual",
+											),
+										},
+									},
 									"created_at": schema.StringAttribute{
 										Computed:   true,
 										CustomType: timetypes.RFC3339Type{},
@@ -299,8 +312,21 @@ func ListDataSourceSchema(ctx context.Context) schema.Schema {
 							},
 						},
 						"allow_code_mode": schema.BoolAttribute{
-							Description: "Allow remote code execution in Dynamic Workers (beta)",
+							Description:        "Deprecated: use `code_mode` for new integrations. `true` maps to any non-off Code Mode policy; `false` maps to `code_mode: off`. If both fields are sent, they must be consistent or the request returns a 400.",
+							Computed:           true,
+							DeprecationMessage: "This attribute is deprecated.",
+						},
+						"code_mode": schema.StringAttribute{
+							Description: "Code Mode policy for this portal. `off`: Code Mode is unavailable; query parameters are ignored. `opt_in`: Code Mode is off by default; clients turn it on with `?codemode=search_and_execute`. `default_on`: Code Mode is on by default; clients can opt out with `?codemode=off`. `enforced`: Code Mode is always on; query parameters are ignored. Defaults to `opt_in` when omitted on create. If both `code_mode` and `allow_code_mode` are sent, they must be consistent or the request returns a 400.\nAvailable values: \"off\", \"opt_in\", \"default_on\", \"enforced\".",
 							Computed:    true,
+							Validators: []validator.String{
+								stringvalidator.OneOfCaseInsensitive(
+									"off",
+									"opt_in",
+									"default_on",
+									"enforced",
+								),
+							},
 						},
 						"created_at": schema.StringAttribute{
 							Computed:   true,

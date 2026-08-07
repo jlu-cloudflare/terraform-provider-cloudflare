@@ -8,11 +8,13 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/schemata"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 var _ resource.ResourceWithConfigValidators = (*ZeroTrustAccessAIControlsMcpPortalResource)(nil)
@@ -42,14 +44,25 @@ func ResourceSchema(ctx context.Context) schema.Schema {
 			"name": schema.StringAttribute{
 				Required: true,
 			},
+			"allow_code_mode": schema.BoolAttribute{
+				Description:        "Deprecated: use `code_mode` for new integrations. `true` maps to any non-off Code Mode policy; `false` maps to `code_mode: off`. If both fields are sent, they must be consistent or the request returns a 400.",
+				Optional:           true,
+				DeprecationMessage: "This attribute is deprecated.",
+			},
+			"code_mode": schema.StringAttribute{
+				Description: "Code Mode policy for this portal. `off`: Code Mode is unavailable; query parameters are ignored. `opt_in`: Code Mode is off by default; clients turn it on with `?codemode=search_and_execute`. `default_on`: Code Mode is on by default; clients can opt out with `?codemode=off`. `enforced`: Code Mode is always on; query parameters are ignored. Defaults to `opt_in` when omitted on create. If both `code_mode` and `allow_code_mode` are sent, they must be consistent or the request returns a 400.\nAvailable values: \"off\", \"opt_in\", \"default_on\", \"enforced\".",
+				Optional:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOfCaseInsensitive(
+						"off",
+						"opt_in",
+						"default_on",
+						"enforced",
+					),
+				},
+			},
 			"description": schema.StringAttribute{
 				Optional: true,
-			},
-			"allow_code_mode": schema.BoolAttribute{
-				Description: "Allow remote code execution in Dynamic Workers (beta)",
-				Computed:    true,
-				Optional:    true,
-				Default:     booldefault.StaticBool(true),
 			},
 			"secure_web_gateway": schema.BoolAttribute{
 				Description: "Route outbound MCP traffic through Zero Trust Secure Web Gateway",
