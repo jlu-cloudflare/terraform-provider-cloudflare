@@ -39,10 +39,6 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 				Description: "Contract version of the page's Liquid template. Present (>= 1) marks a sanitized template; absent or 0 marks a legacy page served verbatim.",
 				Computed:    true,
 			},
-			"contract_version": schema.Int64Attribute{
-				Description: "Contract version of the page's Liquid template. Present (>= 1) marks a sanitized template; absent or 0 marks a legacy page served verbatim.",
-				Computed:    true,
-			},
 			"custom_html": schema.StringAttribute{
 				Description: "Custom page HTML.",
 				Computed:    true,

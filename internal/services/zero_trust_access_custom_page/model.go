@@ -6,8 +6,6 @@ import (
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 	"github.com/cloudflare/terraform-provider-cloudflare/internal/customfield"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"github.com/cloudflare/terraform-provider-cloudflare/internal/apijson"
 )
 
 type ZeroTrustAccessCustomPageResultEnvelope struct {
