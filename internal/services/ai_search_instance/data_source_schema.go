@@ -573,10 +573,33 @@ func DataSourceSchema(ctx context.Context) schema.Schema {
 								},
 							},
 							"parse_type": schema.StringAttribute{
-								Description: "How URLs are discovered. 'sitemap' reads XML sitemaps; 'discover' follows links recursively and requires the source to be a Verified zone on this account.\nAvailable values: \"sitemap\", \"discover\".",
+							Description: "How URLs are discovered. 'sitemap' reads XML sitemaps; 'discover' follows links recursively and requires the source to be a Verified zone on this account.\nAvailable values: \"sitemap\", \"discover\".",
 								Computed:    true,
 								Validators: []validator.String{
-									stringvalidator.OneOfCaseInsensitive("sitemap", "discover"),
+									stringvalidator.OneOfCaseInsensitive(
+										"sitemap",
+										"feed-rss",
+										"crawl",
+									),
+								},
+							},
+							"store_options": schema.SingleNestedAttribute{
+								Computed:   true,
+								CustomType: customfield.NewNestedObjectType[AISearchInstanceSourceParamsWebCrawlerStoreOptionsDataSourceModel](ctx),
+								Attributes: map[string]schema.Attribute{
+									"storage_id": schema.StringAttribute{
+										Computed: true,
+									},
+									"r2_jurisdiction": schema.StringAttribute{
+										Computed: true,
+									},
+									"storage_type": schema.StringAttribute{
+										Description: `Available values: "r2".`,
+										Computed:    true,
+										Validators: []validator.String{
+											stringvalidator.OneOfCaseInsensitive("r2"),
+										},
+									},
 								},
 							},
 						},
