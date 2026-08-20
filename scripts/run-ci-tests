@@ -459,7 +459,7 @@ resolve_dependencies() {
 set -e
 
 # Configuration
-PARALLEL_JOBS=${PARALLEL_JOBS:-3}  # Number of parallel jobs (can be overridden)
+PARALLEL_JOBS=${PARALLEL_JOBS:-1}  # Number of parallel jobs (can be overridden)
 LOG_DIR="./test-logs"
 SWEEP_TIMEOUT="5m"
 TEST_TIMEOUT="15m"
